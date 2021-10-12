@@ -5,7 +5,8 @@ import 'device_control.dart';
 import 'dart:io';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const MaterialApp(
+      home: MyApp()));
 }
 
 class MyApp extends StatefulWidget {
@@ -47,8 +48,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           centerTitle: true,
           title: Row(
@@ -501,8 +501,7 @@ class _MyAppState extends State<MyApp> {
           tooltip: 'scan',
           child: Icon(_isScaning?Icons.stop:Icons.find_replace),
         ), // This trailing comma makes auto-formatting nicer for build methods.
-      ),
-    );
+      );
   }
 }
 
