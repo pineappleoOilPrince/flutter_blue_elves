@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> {
                               .contains(AndroidBluetoothLack.locationPermission)
                           ? Colors.red
                           : Colors.green,
-                      child: const Text("locationPermission",
+                      child: const Text("Permission",
                           style: TextStyle(color: Colors.black)),
                       onPressed: () {
                         if (_blueLack.contains(
@@ -93,7 +93,7 @@ class _MyAppState extends State<MyApp> {
                               .contains(AndroidBluetoothLack.bluetoothFunction)
                           ? Colors.red
                           : Colors.green,
-                      child: const Text("Bluetooth",
+                      child: const Text("Blue",
                           style: TextStyle(color: Colors.black)),
                       onPressed: () {
                         if (_blueLack

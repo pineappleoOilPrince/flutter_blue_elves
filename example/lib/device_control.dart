@@ -188,7 +188,7 @@ class _DeviceControlState extends State<DeviceControl> {
                   children: [
                     Text(_logs[index]._dateTime,
                         style: const TextStyle(color: Colors.green)),
-                    Text(_logs[index]._characteristic + "return:",
+                    Text(_logs[index]._characteristic + " return:",
                         style: const TextStyle(color: Colors.grey)),
                     Text(_logs[index]._data),
                     const Padding(
