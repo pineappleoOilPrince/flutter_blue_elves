@@ -20,6 +20,7 @@ class _MyAppState extends State<MyApp> {
   IosBluetoothState _iosBlueState = IosBluetoothState.unKnown;
   List<ScanResult> _scanResultList = [];
   final List<_ConnectedItem> _connectedList = [];
+  bool _isScaning=false;
 
   @override
   void initState() {
@@ -119,60 +120,85 @@ class _MyAppState extends State<MyApp> {
                           style: const TextStyle(color: Colors.black)),
                       onPressed: () {
                         if(_iosBlueState==IosBluetoothState.unKnown){
-                          AlertDialog(
-                            title: Text("Tip"),
-                            content: Text("Bluetooth is not initialized, please wait"),
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text("close"),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ],
+                          showDialog<void>(
+                            context: context,
+                            builder: (BuildContext dialogContext) {
+                              return AlertDialog(
+                                title: const Text("Tip"),
+                                content: Text("Bluetooth is not initialized, please wait"),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text("close"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         }else if(_iosBlueState==IosBluetoothState.resetting){
-                          AlertDialog(
-                            title: Text("Tip"),
-                            content: Text("Bluetooth is resetting, please wait"),
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text("close"),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ],
+                          showDialog<void>(
+                            context: context,
+                            builder: (BuildContext dialogContext) {
+                              return AlertDialog(
+                                title: Text("Tip"),
+                                content: Text("Bluetooth is resetting, please wait"),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text("close"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         }
                         else if(_iosBlueState==IosBluetoothState.unSupport){
-                          AlertDialog(
-                            title: Text("Tip"),
-                            content: Text("The current device does not support Bluetooth, please check"),
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text("close"),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ],
+                          showDialog<void>(
+                            context: context,
+                            builder: (BuildContext dialogContext) {
+                              return AlertDialog(
+                                title: Text("Tip"),
+                                content: Text("The current device does not support Bluetooth, please check"),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text("close"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         }else if(_iosBlueState==IosBluetoothState.unAuthorized){
-                          AlertDialog(
-                            title: Text("Tip"),
-                            content: Text("The current app does not have Bluetooth permission, please go to the settings to grant"),
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text("close"),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ],
+                          showDialog<void>(
+                            context: context,
+                            builder: (BuildContext dialogContext) {
+                              return AlertDialog(
+                                title: Text("Tip"),
+                                content: Text("The current app does not have Bluetooth permission, please go to the settings to grant"),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text("close"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         }else if(_iosBlueState==IosBluetoothState.poweredOff){
-                          AlertDialog(
-                            title: Text("Tip"),
-                            content: Text("Bluetooth is not currently turned on, please check"),
-                            actions: <Widget>[
-                              FlatButton(
-                                child: Text("close"),
-                                onPressed: () => Navigator.of(context).pop(),
-                              ),
-                            ],
+                          showDialog<void>(
+                            context: context,
+                            builder: (BuildContext dialogContext) {
+                              return AlertDialog(
+                                title: Text("Tip"),
+                                content: Text("Bluetooth is not currently turned on, please check"),
+                                actions: <Widget>[
+                                  FlatButton(
+                                    child: Text("close"),
+                                    onPressed: () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              );
+                            },
                           );
                         }
                       },
@@ -450,18 +476,30 @@ class _MyAppState extends State<MyApp> {
           },
         ),
         floatingActionButton: FloatingActionButton(
+          backgroundColor: _isScaning?Colors.red:Colors.blue,
           onPressed: () {
-            if (_blueLack.isEmpty) {
-              _scanResultList = [];
-              FlutterBlueElves.instance.startScan(5000).listen((event) {
+            if ((Platform.isAndroid&&_blueLack.isEmpty)||(Platform.isIOS&&_iosBlueState==IosBluetoothState.poweredOn)) {
+              if(_isScaning){
+                FlutterBlueElves.instance.stopScan();
+              }else{
+                _scanResultList = [];
                 setState(() {
-                  _scanResultList.insert(0, event);
+                  _isScaning=true;
                 });
-              });
+                FlutterBlueElves.instance.startScan(5000).listen((event) {
+                  setState(() {
+                    _scanResultList.insert(0, event);
+                  });
+                }).onDone(() {
+                  setState(() {
+                    _isScaning=false;
+                  });
+                });
+              }
             }
           },
           tooltip: 'scan',
-          child: const Icon(Icons.find_replace),
+          child: Icon(_isScaning?Icons.stop:Icons.find_replace),
         ), // This trailing comma makes auto-formatting nicer for build methods.
       ),
     );
