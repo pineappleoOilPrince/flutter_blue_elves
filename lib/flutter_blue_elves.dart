@@ -6,20 +6,20 @@ import 'dart:io';
 
 class FlutterBlueElves {
   static FlutterBlueElves instance=FlutterBlueElves._();
-  MethodChannel _channel;
-  EventChannel _eventChannelPlugin;
-  StreamSubscription _eventStreamSubscription;
-  StreamController<ScanResult> _scanResultStreamController;
-  Function(bool isOk) _androidApplyLocationPermissionCallback;
-  Function(bool isOk) _androidOpenLocationServiceCallback;
-  Function(bool isOk) _androidOpenBluetoothServiceCallback;
-  Map<String,Device> _deviceCache;
+  late MethodChannel _channel;
+  late EventChannel _eventChannelPlugin;
+  late StreamSubscription _eventStreamSubscription;
+  late StreamController<ScanResult> _scanResultStreamController;
+  late Function(bool isOk) _androidApplyLocationPermissionCallback;
+  late Function(bool isOk) _androidOpenLocationServiceCallback;
+  late Function(bool isOk) _androidOpenBluetoothServiceCallback;
+  late final Map<String,Device> _deviceCache;
 
   /// 将构造函数私有化
   FlutterBlueElves._(){
     _deviceCache={};
-    _channel=const MethodChannel("flutter_blue_elves/method");
-    _eventChannelPlugin=const EventChannel("flutter_blue_elves/event");//定义接收底层操作系统主动发来的消息通道;
+    _channel = const MethodChannel("flutter_blue_elves/method");
+    _eventChannelPlugin = const EventChannel("flutter_blue_elves/event");//定义接收底层操作系统主动发来的消息通道
     _eventStreamSubscription=_eventChannelPlugin
         .receiveBroadcastStream()
         .listen(_onToDart, onError: _onToDartError);//注册消息回调函数;//广播流来处理EventChannel发来的消息
@@ -85,7 +85,7 @@ class FlutterBlueElves {
   }
 
   void _onToDart(dynamic message) {//底层发送成功消息时会进入到这个函数来接收
-    print(message);
+    //print(message);
     switch(message['eventName']){
       case "allowLocationPermission":
         _androidApplyLocationPermissionCallback(true);
@@ -113,35 +113,35 @@ class FlutterBlueElves {
         _scanResultStreamController.close();//扫描时间到了就关闭流,因为是单对单的流
         break;
       case "connected":
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null) {
           deviceCache._stateStreamController.add(DeviceState.connected);//广播设备状态变化
           deviceCache._state=DeviceState.connected;//将设备状态设置为已连接
         }
         break;
       case "connectTimeout":
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null) {
           deviceCache._stateStreamController.add(DeviceState.connectTimeout);//广播设备连接超时的信息
           deviceCache._state=DeviceState.disconnected;//将设备状态设置为未连接
         }
         break;
       case "initiativeDisConnected"://如果是手动断开连接
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null) {
           deviceCache._stateStreamController.add(DeviceState.initiativeDisConnected);//广播设备状态变化
           deviceCache._state=DeviceState.initiativeDisConnected;//将设备状态设置为手动断开连接
         }
         break;
       case "disConnected"://如果是被动断开连接
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null) {
           deviceCache._stateStreamController.add(DeviceState.disconnected);//广播设备状态变化
           deviceCache._state=DeviceState.disconnected;//将设备状态设置为被动断开连接
         }
         break;
       case "discoverService"://如果是发现了服务
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null) {
           List characteristicsList=message['characteristic'];//底层发现的特征值列表信息
           List<BleCharacteristic> bleCharacteristicsList=[];
@@ -191,7 +191,7 @@ class FlutterBlueElves {
         }
         break;
       case "deviceSignal"://如果是设备传来数据
-        Device deviceCache= _deviceCache[message['id']];
+        Device? deviceCache= _deviceCache[message['id']];
         if(deviceCache!=null){
           DeviceSignalType type=DeviceSignalType.unKnown;
           switch(message['type']){
@@ -217,20 +217,20 @@ class FlutterBlueElves {
     }
   }
   void _onToDartError(dynamic error) {//底层发送错误消息时会进入到这个函数来接收
-    print(error);
+    //print(error);
   }
 
 }
 
 class Device{
-  final String _id;//设备Id
-  DeviceState _state;
-  StreamController<DeviceState> _stateStreamController;
-  Stream<DeviceState> _stateStream;
-  StreamController<BleService> _serviceDiscoveryStreamController;
-  Stream<BleService> _serviceDiscoveryStream;
-  StreamController<DeviceSignalResult> _deviceSignalResultStreamController;
-  Stream<DeviceSignalResult> _deviceSignalResultStream;
+  late final String _id;//设备Id
+  late DeviceState _state;
+  late StreamController<DeviceState> _stateStreamController;
+  late Stream<DeviceState> _stateStream;
+  late StreamController<BleService> _serviceDiscoveryStreamController;
+  late Stream<BleService> _serviceDiscoveryStream;
+  late StreamController<DeviceSignalResult> _deviceSignalResultStreamController;
+  late Stream<DeviceSignalResult> _deviceSignalResultStream;
 
   Device._(this._id){
     _state=DeviceState.disconnected;
@@ -332,39 +332,39 @@ class Device{
 }
 
 class ScanResult {
-  final String _id; //设备Id
-  final String _name; //设备名称
-  final String _localName;//设备localName
-  final String _macAddress; //mac地址,ios没有返回
-  final int _rssi; //蓝牙信号强度
-  final List _uuids; //设备uuid
-  final Map _manufacturerSpecificData;//厂商自定义数据
-  final Uint8List _row;//原始广播包数据
+  late final String _id; //设备Id
+  late final String? _name; //设备名称
+  late final String? _localName;//设备localName
+  late final String? _macAddress; //mac地址,ios没有返回
+  late final int _rssi; //蓝牙信号强度
+  late final List _uuids; //设备uuid
+  late final Map? _manufacturerSpecificData;//厂商自定义数据
+  late final Uint8List? _row;//原始广播包数据
 
   ScanResult._(this._id, this._name,this._localName, this._macAddress, this._rssi,
       this._uuids, this._manufacturerSpecificData,this._row);
 
-  Uint8List get row => _row;
+  Uint8List? get row => _row;
 
 
-  String get localName => _localName;
+  String? get localName => _localName;
 
-  Map get manufacturerSpecificData => _manufacturerSpecificData;
+  Map? get manufacturerSpecificData => _manufacturerSpecificData;
 
   List get uuids => _uuids;
 
   int get rssi => _rssi;
 
-  String get macAddress => _macAddress;
+  String? get macAddress => _macAddress;
 
-  String get name => _name;
+  String? get name => _name;
 
   String get id => _id;
 
   /// 连接设备
   /// 返回设备对象
   Device connect({connectTimeout=0}){
-    Device device=FlutterBlueElves.instance._deviceCache[_id];
+    Device? device=FlutterBlueElves.instance._deviceCache[_id];
     if(device==null) {//cache里面没有代表之前没有连接过,所以可以连接,除非将device.destroy(),android永远都是走这里
       device=Device._(_id);//创建设备对象
       FlutterBlueElves.instance._deviceCache[_id]=device;//将device加入到cache中
@@ -417,12 +417,12 @@ class DeviceSignalResult{
   final DeviceSignalType _type;//信号类型
   final String _uuid;//UUID
   final bool _isSuccess;//是否成功
-  final Uint8List _data;
+  final Uint8List? _data;
 
   DeviceSignalResult(
       this._type, this._uuid, this._isSuccess, this._data);
 
-  Uint8List get data => _data;
+  Uint8List?get data => _data;
 
   bool get isSuccess => _isSuccess;
 

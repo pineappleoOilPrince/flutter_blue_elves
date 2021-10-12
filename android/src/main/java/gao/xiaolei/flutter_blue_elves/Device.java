@@ -210,7 +210,7 @@ public class Device {
                         Map<String, BluetoothGattCharacteristic> charMap = new HashMap<>();
                         BluetoothGattService bluetoothGattService = services.get(i);
                         String serviceUuid = bluetoothGattService.getUuid().toString();
-                        System.out.println("发现新服务：" + serviceUuid);
+                        //System.out.println("发现新服务：" + serviceUuid);
                         List<BluetoothGattCharacteristic> characteristics = bluetoothGattService.getCharacteristics();
                         List<Map<String,Object>> callbackCharacteristicUuidList=new ArrayList<>(characteristics.size());//返回给flutter上层的特征值列表
                         for (int j = 0; j < characteristics.size(); j++) {
@@ -221,13 +221,13 @@ public class Device {
                             characteristicInfo.put("uuid",currentCharacteristicUuid);
                             characteristicInfo.put("properties",characteristic.getProperties());
                             callbackCharacteristicUuidList.add(characteristicInfo);
-                            System.out.println("发现新特征值：" + characteristic.getUuid().toString());
+                            //System.out.println("发现新特征值：" + characteristic.getUuid().toString());
                             List<BluetoothGattDescriptor> descriptors=characteristic.getDescriptors();
                             List<Map<String,Object>> callbackDescriptorUuidList=new ArrayList<>(descriptors.size());//返回给flutter上层的特征值的描述信息列表
                             for(int k=0;k<descriptors.size();k++){
                                 Map<String,Object> descriptorInfo=new HashMap<>(1);
                                 BluetoothGattDescriptor descriptor=descriptors.get(k);
-                                System.out.println("发现新描述:"+descriptor.getUuid().toString());
+                                //System.out.println("发现新描述:"+descriptor.getUuid().toString());
                                 descriptorInfo.put("uuid",descriptor.getUuid().toString());
                                 callbackDescriptorUuidList.add(descriptorInfo);
                             }

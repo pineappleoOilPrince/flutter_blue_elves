@@ -90,13 +90,13 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         new EventChannel(binaryMessenger, EVENT_CHANNEL).setStreamHandler(new EventChannel.StreamHandler() {//创建对flutter的消息发送channel
             @Override
             public void onListen(Object o, EventChannel.EventSink eventSink) {//当flutter中有人要订阅我们发送的消息时就会调用这个函数
-                System.out.println("添加了一个观察者");
+                //System.out.println("添加了一个观察者");
                 mySink = eventSink;//设置观察者
             }
 
             @Override
             public void onCancel(Object o) {//当flutter中有人要取消订阅我们发送的消息时就会调用这个函数
-                System.out.println("删除了一个观察者");
+                //System.out.println("删除了一个观察者");
                 mySink = null;//将观察者移除
             }
         });
@@ -362,7 +362,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 @Override
                 public void onScanFailed(int errorCode) {
                     super.onScanFailed(errorCode);
-                    System.out.println("扫描到错误");
+                    //System.out.println("扫描到错误");
                 }
             };
         }

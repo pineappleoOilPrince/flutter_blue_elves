@@ -103,21 +103,20 @@
 //通知该设备对象连接状态更新了
 - (void)notifyConnectState:(short)newState {
     if(newState==0){//如果连接断开
-        NSLog(@"设备连接断开");
+        //NSLog(@"设备连接断开");
         self.state=0;
     }else if(newState==1){//如果设备连接成功
         self.isConnectedDevice=YES;
-        NSLog(@"设备连接成功");
+        //NSLog(@"设备连接成功");
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(connectTimeoutCallback) object:nil];//取消最大连接时间的定时任务
         self.state=2;
-    }else//如果设备连接失败
-        NSLog(@"设备连接失败");
+    }
 }
 
 // 发现外设的服务后的回调
 - (void)peripheral:(nonnull CBPeripheral *)peripheral didDiscoverServices:(nullable NSError *)error {
     if (error) {
-        NSLog(@"设备获取服务失败");
+        //NSLog(@"设备获取服务失败");
         return;
     }
     for (CBService *service in peripheral.services) {
@@ -129,7 +128,7 @@
 //发现服务特征值之后的回调
 -(void)peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(nonnull CBService *)service error:(nullable NSError *)error{
     if (error) {
-        NSLog(@"设备服务特征值获取失败");
+        //NSLog(@"设备服务特征值获取失败");
         return;
     }
     for (CBCharacteristic *characteristic in service.characteristics) {
@@ -140,7 +139,7 @@
 //发现服务特征值描述之后的回调
 -(void)peripheral:(CBPeripheral *)peripheral didDiscoverDescriptorsForCharacteristic:(nonnull CBCharacteristic *)characteristic error:(nullable NSError *)error{
     if (error) {
-        NSLog(@"设备服务特征值描述获取失败");
+        //NSLog(@"设备服务特征值描述获取失败");
         return;
     }
     CBService *service=characteristic.service;//获取服务对象
