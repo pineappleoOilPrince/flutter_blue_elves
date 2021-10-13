@@ -72,7 +72,9 @@ class _MyAppState extends State<MyApp> {
                           .contains(AndroidBluetoothLack.locationPermission)) {
                         FlutterBlueElves.instance
                             .androidApplyLocationPermission((isOk) {
-                          print(isOk ? "User agrees to grant location permission" : "User does not agree to grant location permission");
+                          print(isOk
+                              ? "User agrees to grant location permission"
+                              : "User does not agree to grant location permission");
                         });
                       }
                     },
@@ -97,7 +99,9 @@ class _MyAppState extends State<MyApp> {
                           .contains(AndroidBluetoothLack.locationFunction)) {
                         FlutterBlueElves.instance
                             .androidOpenLocationService((isOk) {
-                          print(isOk ? "The user agrees to turn on the positioning function" : "The user does not agree to enable the positioning function");
+                          print(isOk
+                              ? "The user agrees to turn on the positioning function"
+                              : "The user does not agree to enable the positioning function");
                         });
                       }
                     },
@@ -122,7 +126,9 @@ class _MyAppState extends State<MyApp> {
                           .contains(AndroidBluetoothLack.bluetoothFunction)) {
                         FlutterBlueElves.instance
                             .androidOpenBluetoothService((isOk) {
-                          print(isOk ? "The user agrees to turn on the Bluetooth function" : "The user does not agrees to turn on the Bluetooth function");
+                          print(isOk
+                              ? "The user agrees to turn on the Bluetooth function"
+                              : "The user does not agrees to turn on the Bluetooth function");
                         });
                       }
                     },
@@ -450,7 +456,7 @@ class _MyAppState extends State<MyApp> {
                         flex: 3,
                         child: Column(
                           children: [
-                          ElevatedButton(
+                            ElevatedButton(
                                 onPressed: () {
                                   ScanResult scanMsg = _scanResultList[
                                       index - scanStartIndex - 1];
