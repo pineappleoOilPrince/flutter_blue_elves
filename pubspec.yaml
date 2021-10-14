@@ -1,7 +1,6 @@
 name: flutter_blue_elves
 description: A flutter plugin for bluetooth ble device connect and control.
-version: 0.0.1
-author: PineappleOilPrince
+version: 0.0.2
 homepage: https://github.com/pineappleoOilPrince/flutter_blue_elves
 
 environment:

@@ -68,18 +68,19 @@ class _DeviceControlState extends State<DeviceControl> {
     });
     _deviceSignalResultStream =
         widget._device.deviceSignalResultStream.listen((event) {
-      if (event.type == DeviceSignalType.characteristicsRead||event.type == DeviceSignalType.unKnown) {
-        String data;
-        if (event.data != null && event.data.isNotEmpty) {
-          data = "0x";
-          for (int i = 0; i < event.data.length; i++) {
-            String currentStr = event.data[i].toRadixString(16).toUpperCase();
-            if (currentStr.length < 2) {
-              currentStr = "0" + currentStr;
-            }
-            data = data + currentStr;
+      String data;
+      if (event.data != null && event.data.isNotEmpty) {
+        data = "0x";
+        for (int i = 0; i < event.data.length; i++) {
+          String currentStr = event.data[i].toRadixString(16).toUpperCase();
+          if (currentStr.length < 2) {
+            currentStr = "0" + currentStr;
           }
+          data = data + currentStr;
         }
+      }
+      if (event.type == DeviceSignalType.characteristicsRead ||
+          event.type == DeviceSignalType.unKnown) {
         setState(() {
           _logs.insert(
               0,
@@ -92,17 +93,6 @@ class _DeviceControlState extends State<DeviceControl> {
                   DateTime.now().toString()));
         });
       } else if (event.type == DeviceSignalType.characteristicsWrite) {
-        String data;
-        if (event.data != null && event.data.isNotEmpty) {
-          data = "0x";
-          for (int i = 0; i < event.data.length; i++) {
-            String currentStr = event.data[i].toRadixString(16).toUpperCase();
-            if (currentStr.length < 2) {
-              currentStr = "0" + currentStr;
-            }
-            data = data + currentStr;
-          }
-        }
         setState(() {
           _logs.insert(
               0,
@@ -115,36 +105,19 @@ class _DeviceControlState extends State<DeviceControl> {
                   DateTime.now().toString()));
         });
       } else if (event.type == DeviceSignalType.characteristicsNotify) {
-        String data = "0x";
-        for (int i = 0; i < event.data.length; i++) {
-          String currentStr = event.data[i].toRadixString(16).toUpperCase();
-          if (currentStr.length < 2) {
-            currentStr = "0" + currentStr;
-          }
-          data += currentStr;
-        }
         setState(() {
           _logs.insert(
               0, _LogItem(event.uuid, data, DateTime.now().toString()));
         });
       } else if (event.type == DeviceSignalType.descriptorRead) {
-        String data;
-        if (event.data != null && event.data.isNotEmpty) {
-          data = "0x";
-          for (int i = 0; i < event.data.length; i++) {
-            String currentStr = event.data[i].toRadixString(16).toUpperCase();
-            if (currentStr.length < 2) {
-              currentStr = "0" + currentStr;
-            }
-            data = data + currentStr;
-          }
-        }
         setState(() {
           _logs.insert(
               0,
               _LogItem(
                   event.uuid,
-                  (event.isSuccess ? "read descriptor data success signal and data:" : "read descriptor data failed signal and data:") +
+                  (event.isSuccess
+                          ? "read descriptor data success signal and data:"
+                          : "read descriptor data failed signal and data:") +
                       (data ?? "none"),
                   DateTime.now().toString()));
         });
@@ -161,9 +134,11 @@ class _DeviceControlState extends State<DeviceControl> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-             FlatButton(
+              FlatButton(
                 child: Text(
-                    _deviceState == DeviceState.connected ? "Disconnect" : "connect",
+                    _deviceState == DeviceState.connected
+                        ? "Disconnect"
+                        : "connect",
                     style: const TextStyle(color: Colors.white)),
                 onPressed: () {
                   if (_deviceState == DeviceState.connected) {
@@ -206,7 +181,8 @@ class _DeviceControlState extends State<DeviceControl> {
             },
             children: _serviceInfos.map((service) {
               String serviceTitle = "Unknow Service";
-              if(Platform.isAndroid){//安卓才能发现到这些服务
+              if (Platform.isAndroid) {
+                //安卓才能发现到这些服务
                 switch (service._serviceInfo.serviceUuid.substring(4, 8)) {
                   case "1800":
                     serviceTitle = "Generic Access";
@@ -272,7 +248,8 @@ class _DeviceControlState extends State<DeviceControl> {
                                       autofocus: true,
                                       controller: _sendDataTextController,
                                       decoration: const InputDecoration(
-                                        hintText: "Enter hexadecimal,such as FED10101",
+                                        hintText:
+                                            "Enter hexadecimal,such as FED10101",
                                       ),
                                     ),
                                     FlatButton(
@@ -425,8 +402,10 @@ class _DeviceControlState extends State<DeviceControl> {
                                                     .map((descriptor) {
                                                   String descriptorType =
                                                       "UnKnown";
-                                                  switch (Platform.isAndroid?descriptor.uuid
-                                                      .substring(4, 8):descriptor.uuid) {
+                                                  switch (Platform.isAndroid
+                                                      ? descriptor.uuid
+                                                          .substring(4, 8)
+                                                      : descriptor.uuid) {
                                                     case "2900":
                                                       descriptorType =
                                                           "Characteristic Extended Properties";
