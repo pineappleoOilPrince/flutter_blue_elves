@@ -160,6 +160,16 @@
 
 //CBCentralManagerDelegate一定要有这个方法
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central {
+    if(central.state==CBManagerStatePoweredOff){//如果蓝牙被关闭了
+        for (NSString * deviceId in self.devicesMap) {//就要将所有的设备对象都断开连接
+            Device * device=[self.devicesMap objectForKey:deviceId];
+            if(device.state==2){//如果是已经连接的设备才要去断开连接
+                [device notifyConnectState:0];//通知设备对象连接断开了
+                NSDictionary<NSString *,id> * result=@{@"eventName":@"disConnected",@"id":deviceId};//因为NSDictionary不可改变，所以一定要这样初始化
+                [self sendDataToFlutter:result];
+            }
+        }
+    }
 }
 
 //扫描设备列表回调

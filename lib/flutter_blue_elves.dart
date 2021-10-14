@@ -618,13 +618,13 @@ enum DeviceState {
 enum CharacteristicProperties {
   broadcast,
 
-  ///可写
+  ///可读
   read,
 
   ///不回复写,ios平台如果设置不回复则写入后则不会进入写入结果的回调,android则即使设置了也会进入写入结果的回调
   writeNoResponse,
 
-  ///可读
+  ///可写
   write,
 
   ///通知
