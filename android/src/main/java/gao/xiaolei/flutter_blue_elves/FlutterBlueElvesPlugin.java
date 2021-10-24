@@ -36,6 +36,7 @@ import java.util.Set;
 import gao.xiaolei.flutter_blue_elves.callback.ConnectStateCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DeviceSignalCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DiscoverServiceCallback;
+import gao.xiaolei.flutter_blue_elves.callback.MtuChangeCallback;
 import gao.xiaolei.flutter_blue_elves.util.MyScanRecord;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -140,7 +141,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 String connectDeviceId = (String) connectParamsMap.get("id") ;
                 BluetoothDevice scanCache = scanDeviceCaches.remove(connectDeviceId);//从扫描结果中去连接只能执行一次
                 if (scanCache != null) {//如果这个id存在的话
-                    Device toConnectDevice = new Device(context, mHandler,scanCache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback);
+                    Device toConnectDevice = new Device(context, mHandler,scanCache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback,mtuChangeCallback);
                     devicesMap.put(connectDeviceId,toConnectDevice);
                     toConnectDevice.connectDevice((int) connectParamsMap.get("timeout"));
                     result.success(true);
@@ -210,6 +211,15 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                     writeDescriptorDataDevice.writeDescriptorDataToDevice((String) writeDescriptorDataParamsMap.get("serviceUuid"), (String) writeDescriptorDataParamsMap.get("characteristicUuid"), (String) writeDescriptorDataParamsMap.get("descriptorUuid"), (byte[]) writeDescriptorDataParamsMap.get("data"));
                     result.success(true);
                 } else result.success(false);
+                break;
+            case "requestMtu"://如果是修改Mtu
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+                    Map<String, Object> requestMtuDataParamsMap = call.arguments();
+                    Device requestMtuDevice = devicesMap.get((String)requestMtuDataParamsMap.get("id"));
+                    if (requestMtuDevice != null) //如果这个id存在的话
+                        result.success(requestMtuDevice.requestMtu((Integer) requestMtuDataParamsMap.get("newMtu")));
+                    else result.success(false);
+                }else result.success(false);
                 break;
             case "checkBlueLackWhat"://如果是检查缺少什么权限和功能
                 result.success(checkBlueLackWhat());
@@ -563,7 +573,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
 
     }
 
-    private ConnectStateCallback mConnectStateCallback = new ConnectStateCallback() {//设备连接状态有改变时就会调用这个函数
+    private final ConnectStateCallback mConnectStateCallback = new ConnectStateCallback() {//设备连接状态有改变时就会调用这个函数
 
         @Override
         public void connectSuccess(String id) {
@@ -590,7 +600,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         }
     };
 
-    private DiscoverServiceCallback myDiscoverServiceCallback = (id, serviceUuid, characteristic) -> {
+    private final DiscoverServiceCallback myDiscoverServiceCallback = (id, serviceUuid, characteristic) -> {
         Map<String, Object> result = new HashMap<>(4);
         result.put("eventName", "discoverService");
         result.put("id", id);
@@ -599,7 +609,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         sendSuccessMsgToEventChannel(result);//通知上层发现服务
     };
 
-    private DeviceSignalCallback mDeviceSignalCallback= (type, id, uuid, isSuccess, data) -> {
+    private final DeviceSignalCallback mDeviceSignalCallback= (type, id, uuid, isSuccess, data) -> {
         Map<String, Object> result = new HashMap<>(6);
         result.put("eventName", "deviceSignal");
         result.put("type", type);
@@ -607,6 +617,15 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         result.put("uuid", uuid);
         result.put("isSuccess", isSuccess);
         result.put("data", data);
+        sendSuccessMsgToEventChannel(result);
+    };
+
+    private final MtuChangeCallback mtuChangeCallback= (id, isSuccess, newMtu) -> {
+        Map<String, Object> result = new HashMap<>(4);
+        result.put("eventName", "mtuChange");
+        result.put("id", id);
+        result.put("isSuccess", isSuccess);
+        result.put("newMtu", newMtu);
         sendSuccessMsgToEventChannel(result);
     };
 

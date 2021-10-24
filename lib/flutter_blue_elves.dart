@@ -153,6 +153,12 @@ class FlutterBlueElves {
       case "connected":
         Device? deviceCache = _deviceCache[message['id']];
         if (deviceCache != null) {
+          if (Platform.isIOS) {
+            //因为ios是自动根据设备支持的mtu来自行调整的,不像android是默认23的
+            deviceCache._mtu = message['mtu'];
+          } else {
+            deviceCache._mtu = 23; //重置mtu
+          }
           deviceCache._stateStreamController
               .add(DeviceState.connected); //广播设备状态变化
           deviceCache._state = DeviceState.connected; //将设备状态设置为已连接
@@ -266,6 +272,14 @@ class FlutterBlueElves {
                   message['data']));
         }
         break;
+      case "mtuChange": //如果是设备mtu修改了
+        Device? deviceCache = _deviceCache[message['id']];
+        if (deviceCache != null) {
+          deviceCache._mtu = message['newMtu'];
+          deviceCache._androidRequestMtuCallback(
+              message['isSuccess'], message['newMtu']);
+        }
+        break;
     }
   }
 
@@ -279,15 +293,18 @@ class FlutterBlueElves {
 class Device {
   late final String _id; //设备Id
   late DeviceState _state;
+  late int _mtu;
   late StreamController<DeviceState> _stateStreamController;
   late Stream<DeviceState> _stateStream;
   late StreamController<BleService> _serviceDiscoveryStreamController;
   late Stream<BleService> _serviceDiscoveryStream;
   late StreamController<DeviceSignalResult> _deviceSignalResultStreamController;
   late Stream<DeviceSignalResult> _deviceSignalResultStream;
+  late Function(bool isSuccess, int newMtu) _androidRequestMtuCallback;
 
   Device._(this._id) {
     _state = DeviceState.disconnected;
+    _mtu = 23;
     _stateStreamController = StreamController<DeviceState>();
     _stateStream = _stateStreamController.stream.asBroadcastStream();
     _serviceDiscoveryStreamController = StreamController<BleService>();
@@ -432,6 +449,28 @@ class Device {
   ///获取设备返回数据的结果广播流
   Stream<DeviceSignalResult> get deviceSignalResultStream =>
       _deviceSignalResultStream;
+
+  ///修改设备的mtu,只有android才能用
+  void androidRequestMtu(
+      int newMtu, Function(bool isSuccess, int newMtu) callback) {
+    _androidRequestMtuCallback = callback;
+    if (_state != DeviceState.destroyed && _state == DeviceState.connected) {
+      //已连接才能去向设备写入数据
+      if (newMtu < 23)
+        newMtu = 23;
+      else if (newMtu > 512) newMtu = 512;
+      FlutterBlueElves.instance._channel.invokeMethod(
+          'requestMtu', {"id": _id, "newMtu": newMtu}).then((isSended) {
+        if (!isSended) {
+          //如果发送请求失败
+          _androidRequestMtuCallback(false, _mtu);
+        }
+      }); //去修改设备mtu
+    }
+  }
+
+  ///获取当前设备的mtu
+  int get mtu => _mtu;
 }
 
 ///返回的扫描结果对象

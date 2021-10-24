@@ -11,6 +11,8 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
 
+import androidx.annotation.RequiresApi;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.UUID;
 import gao.xiaolei.flutter_blue_elves.callback.ConnectStateCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DeviceSignalCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DiscoverServiceCallback;
+import gao.xiaolei.flutter_blue_elves.callback.MtuChangeCallback;
 
 //封装的蓝牙设备对象
 public class Device {
@@ -37,6 +40,7 @@ public class Device {
     private ConnectStateCallback connectStateCallback;//连接状态的回调
     private DeviceSignalCallback deviceSignalCallback;//设备传回数据时的回调
     private DiscoverServiceCallback discoverServiceCallback;//发现蓝牙服务之后的回调
+    private MtuChangeCallback mtuChangeCallback;//mtu被修改之后的回调
     private Runnable connectTimeoutCallback=()->{//连接超时的回调
         if(mBleGatt!=null){
             mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
@@ -46,13 +50,14 @@ public class Device {
         connectStateCallback.connectTimeout(bleDevice.getAddress());//连接超时的回调
     };
 
-    public Device(Context mContext,Handler handler,BluetoothDevice bleDevice, ConnectStateCallback connectStateCallback, DeviceSignalCallback deviceSignalCallback, DiscoverServiceCallback discoverServiceCallback) {
+    public Device(Context mContext,Handler handler,BluetoothDevice bleDevice, ConnectStateCallback connectStateCallback, DeviceSignalCallback deviceSignalCallback, DiscoverServiceCallback discoverServiceCallback,MtuChangeCallback mtuChangeCallback) {
         this.mContext=mContext;
         this.mHandler=handler;
         this.bleDevice=bleDevice;
         this.connectStateCallback = connectStateCallback;
         this.discoverServiceCallback = discoverServiceCallback;
         this.deviceSignalCallback=deviceSignalCallback;
+        this.mtuChangeCallback=mtuChangeCallback;
     }
 
     /**
@@ -149,6 +154,13 @@ public class Device {
         }
     }
 
+    /**
+     * 修改mtu,需要android版本大于21
+     */
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public boolean requestMtu(int newMtu){
+        return mBleGatt.requestMtu(newMtu);
+    }
 
     /**
      * 根据服务UUID和特征UUID和描述UUID,获取一个描述{@link BluetoothGattDescriptor}
@@ -285,6 +297,17 @@ public class Device {
                 deviceSignalCallback.signalCallback((short) 4,bleDevice.getAddress(),descriptor.getUuid().toString(),true,descriptor.getValue());
              else //如果失败了
                 deviceSignalCallback.signalCallback((short) 4,bleDevice.getAddress(),descriptor.getUuid().toString(),false,null);
+        }
+
+        //mtu被修改后的回调
+        @Override
+        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+        public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+            super.onMtuChanged(gatt, mtu, status);
+            if (status == BluetoothGatt.GATT_SUCCESS) //如果mtu修改成功了
+                mtuChangeCallback.mtuChangeCallback(bleDevice.getAddress(),true,mtu);
+            else //如果失败了
+                mtuChangeCallback.mtuChangeCallback(bleDevice.getAddress(),false,mtu);
         }
     }
 

@@ -25,6 +25,7 @@ class _DeviceControlState extends State<DeviceControl> {
   final TextEditingController _sendDataTextController = TextEditingController();
   late DeviceState _deviceState;
   final List<_LogItem> _logs = [];
+  late int _mtu;
   late StreamSubscription<BleService> _serviceDiscoveryStream;
   late StreamSubscription<DeviceState> _stateStream;
   late StreamSubscription<DeviceSignalResult> _deviceSignalResultStream;
@@ -42,6 +43,7 @@ class _DeviceControlState extends State<DeviceControl> {
   @override
   void initState() {
     super.initState();
+    _mtu=widget._device.mtu;
     _serviceDiscoveryStream =
         widget._device.serviceDiscoveryStream.listen((event) {
       setState(() {
@@ -50,14 +52,12 @@ class _DeviceControlState extends State<DeviceControl> {
     });
     _deviceState = widget._device.state;
     if (_deviceState == DeviceState.connected) {
-      setState(() {
-        _serviceInfos.clear();
-      });
       widget._device.discoveryService();
     }
     _stateStream = widget._device.stateStream.listen((event) {
       if (event == DeviceState.connected) {
         setState(() {
+          _mtu=widget._device.mtu;
           _serviceInfos.clear();
         });
         widget._device.discoveryService();
@@ -134,19 +134,60 @@ class _DeviceControlState extends State<DeviceControl> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              TextButton(
-                child: Text(
-                    _deviceState == DeviceState.connected
-                        ? "Disconnect"
-                        : "connect",
-                    style: const TextStyle(color: Colors.white)),
-                onPressed: () {
-                  if (_deviceState == DeviceState.connected) {
-                    widget._device.disConnect();
-                  } else {
-                    widget._device.connect(connectTimeout: 5000);
-                  }
-                },
+              Row(
+                children: [
+                  TextButton(
+                    child: Text("Mtu:$_mtu",
+                        style: const TextStyle(color: Colors.white)),
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (BuildContext dialogContext) {
+                          return SimpleDialog(
+                            title: const Text('Set Mtu'),
+                            children: <Widget>[
+                              TextField(
+                                keyboardType:TextInputType.number,
+                                autofocus: true,
+                                controller: _sendDataTextController,
+                                decoration: const InputDecoration(
+                                  hintText:
+                                  "Mtu is in [23,512]",
+                                ),
+                              ),
+                              TextButton(
+                                child: const Text("request"),
+                                onPressed: () {
+                                  widget._device.androidRequestMtu(int.parse(_sendDataTextController.text), (isSuccess, newMtu){
+                                    setState(() {
+                                      _mtu=newMtu;
+                                    });
+                                  });
+                                  _sendDataTextController.clear();
+                                  Navigator.pop(dialogContext);
+                                },
+                              )
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  TextButton(
+                    child: Text(
+                        _deviceState == DeviceState.connected
+                            ? "Disconnect"
+                            : "connect",
+                        style: const TextStyle(color: Colors.white)),
+                    onPressed: () {
+                      if (_deviceState == DeviceState.connected) {
+                        widget._device.disConnect();
+                      } else {
+                        widget._device.connect(connectTimeout: 5000);
+                      }
+                    },
+                  )
+                ],
               )
             ],
           )
