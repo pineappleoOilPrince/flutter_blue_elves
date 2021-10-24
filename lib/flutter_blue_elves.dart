@@ -10,6 +10,7 @@ class FlutterBlueElves {
   late EventChannel _eventChannelPlugin;
   late StreamSubscription _eventStreamSubscription;
   late StreamController<ScanResult> _scanResultStreamController;
+  late Function(bool isOk) _androidApplyBluetoothPermissionCallback;
   late Function(bool isOk) _androidApplyLocationPermissionCallback;
   late Function(bool isOk) _androidOpenLocationServiceCallback;
   late Function(bool isOk) _androidOpenBluetoothServiceCallback;
@@ -56,24 +57,32 @@ class FlutterBlueElves {
         result.add(AndroidBluetoothLack.locationFunction);
       } else if (lacks.contains(2)) {
         result.add(AndroidBluetoothLack.bluetoothFunction);
+      } else if (lacks.contains(3)) {
+        result.add(AndroidBluetoothLack.bluetoothPermission);
       }
       return result;
     });
   }
 
-  ///调用底层去跟获取定位权限,安卓专用
+  ///调用底层去获取蓝牙权限,安卓12专用
+  void androidApplyBluetoothPermission(Function(bool isOk) callback) {
+    _androidApplyBluetoothPermissionCallback = callback;
+    _channel.invokeMethod('applyBluetoothPermission');
+  }
+
+  ///调用底层去获取定位权限,安卓专用
   void androidApplyLocationPermission(Function(bool isOk) callback) {
     _androidApplyLocationPermissionCallback = callback;
     _channel.invokeMethod('applyLocationPermission');
   }
 
-  ///调用底层去跟开启定位功能,安卓专用
+  ///调用底层去开启定位功能,安卓专用
   void androidOpenLocationService(Function(bool isOk) callback) {
     _androidOpenLocationServiceCallback = callback;
     _channel.invokeMethod('openLocationService');
   }
 
-  ///调用底层去跟开启蓝牙功能,安卓专用
+  ///调用底层去开启蓝牙功能,安卓专用
   void androidOpenBluetoothService(Function(bool isOk) callback) {
     _androidOpenBluetoothServiceCallback = callback;
     _channel.invokeMethod('openBluetoothService');
@@ -102,6 +111,12 @@ class FlutterBlueElves {
     //底层发送成功消息时会进入到这个函数来接收
     //print(message);
     switch (message['eventName']) {
+      case "allowBluetoothPermission":
+        _androidApplyBluetoothPermissionCallback(true);
+        break;
+      case "denyBluetoothPermission":
+        _androidApplyBluetoothPermissionCallback(false);
+        break;
       case "allowLocationPermission":
         _androidApplyLocationPermissionCallback(true);
         break;
@@ -559,6 +574,9 @@ class DeviceSignalResult {
 
 ///标示android平台缺少哪些蓝牙必须功能的枚举类
 enum AndroidBluetoothLack {
+  ///没有授予定位权限
+  bluetoothPermission,
+
   ///没有授予定位权限
   locationPermission,
 

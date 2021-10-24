@@ -28,6 +28,9 @@ Check bluetooth function is Ok.
 ```dart
 ///Android:
 FlutterBlueElves.instance.androidCheckBlueLackWhat().then((values) {
+  if(values.contains(AndroidBluetoothLack.bluetoothPermission)){
+      ///no bluetooth permission,if your target is android 12
+  }
   if(values.contains(AndroidBluetoothLack.locationPermission)){
       ///no location permission
   } 
@@ -65,6 +68,10 @@ FlutterBlueElves.instance.androidApplyLocationPermission((isOk) {
 ///turn on location function
 FlutterBlueElves.instance.androidOpenLocationService((isOk) {
   print(isOk ? "The user agrees to turn on the positioning function" : "The user does not agree to enable the positioning function");
+});
+///turn on bluetooth permission
+FlutterBlueElves.instance.androidApplyBluetoothPermission((isOk) {
+print(isOk ? "The user agrees to turn on the Bluetooth permission" : "The user does not agrees to turn on the Bluetooth permission");
 });
 ///turn on bluetooth function
 FlutterBlueElves.instance.androidOpenBluetoothService((isOk) {

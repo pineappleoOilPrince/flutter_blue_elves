@@ -68,6 +68,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
     private static final int REQUEST_CODE_LOCATION_PERMISSION = 2;//申请定位权限的requestCode
     private static final int REQUEST_CODE_LOCATION_SETTINGS = 3;//开启定位服务的requestCode
     private static final int REQUEST_CODE_OPEN_BLUETOOTH = 4;//开启蓝牙服务的requestCode
+    private static final int REQUEST_CODE_BLUE_PERMISSION = 5;//申请蓝牙权限的requestCode
 
     /// The MethodChannel that will the communication between Flutter and native Android
     ///
@@ -212,6 +213,9 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 break;
             case "checkBlueLackWhat"://如果是检查缺少什么权限和功能
                 result.success(checkBlueLackWhat());
+                break;
+            case "applyBluetoothPermission"://如果是获取蓝牙权限
+                applyBluePermission();
                 break;
             case "applyLocationPermission"://如果是获取蓝牙定位权限
                 applyLocalPermission();
@@ -418,16 +422,43 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
             lackArray.add(1);
         if (!mBluetoothAdapter.isEnabled())//如果没有打开蓝牙
             lackArray.add(2);
+        if(!checkHaveBluePermission())//如果没有授予蓝牙权限
+            lackArray.add(3);
         return lackArray;
     }
 
 
     /**
+     * 判断用户是否有授予蓝牙权限,适配android12
+     */
+    private boolean checkHaveBluePermission() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            return ContextCompat.checkSelfPermission(context,
+                    Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED&&ContextCompat.checkSelfPermission(context,
+                    Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+        else return true;
+    }
+
+    /**
+     * 申请定蓝牙权限
+     */
+    private void applyBluePermission() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S){//android12才要申请这个
+            String[] strings=new String[]{Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
+            ActivityCompat.requestPermissions(activity, strings, REQUEST_CODE_BLUE_PERMISSION);
+        }
+    }
+
+    /**
      * 判断用户是否有授予定位权限
      */
     private boolean checkHaveLocalPermission() {
-        return ContextCompat.checkSelfPermission(context,
-                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            return ContextCompat.checkSelfPermission(context,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED&&ContextCompat.checkSelfPermission(context,
+                    Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+        else return ContextCompat.checkSelfPermission(context,
+                Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
 
@@ -435,8 +466,10 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
      * 申请定位权限
      */
     private void applyLocalPermission() {
-        String[] strings =
-                {Manifest.permission.ACCESS_FINE_LOCATION};
+        String[] strings;
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            strings = new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+        else strings =new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
         ActivityCompat.requestPermissions(activity, strings, REQUEST_CODE_LOCATION_PERMISSION);
     }
 
@@ -494,14 +527,21 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         });
         binding.addRequestPermissionsResultListener((requestCode, permissions, grantResults) -> {
             Map<String, Object> result = new HashMap<>(1);
+            boolean isAllow=grantResults.length > 0 ? true : false;
+            for(int i=0;i<grantResults.length;i++){
+                if(grantResults[i]!= PackageManager.PERMISSION_GRANTED){
+                    isAllow=false;
+                    break;
+                }
+            }
             switch (requestCode) {
                 case REQUEST_CODE_LOCATION_PERMISSION://如果是申请位置权限的结果
-                    if (grantResults.length > 0 &&
-                            grantResults[0] == PackageManager.PERMISSION_GRANTED) //用户同意了权限的话
-                        result.put("eventName", "allowLocationPermission");
-                    else //如果用户不同意给定位权限的话
-                        result.put("eventName", "denyLocationPermission");
+                    result.put("eventName", isAllow ? "allowLocationPermission" : "denyLocationPermission");
                     sendSuccessMsgToEventChannel(result);//告知上层用户是否同意授予位置权限
+                    return true;
+                case REQUEST_CODE_BLUE_PERMISSION://如果是申请蓝牙权限的结果
+                    result.put("eventName", isAllow ? "allowBluetoothPermission" : "denyBluetoothPermission");
+                    sendSuccessMsgToEventChannel(result);//告知上层用户是否同意授予蓝牙权限
                     return true;
             }
             return false;

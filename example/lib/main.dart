@@ -49,90 +49,124 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 100,
         centerTitle: true,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: Platform.isAndroid
               ? [
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      backgroundColor: _blueLack
-                              .contains(AndroidBluetoothLack.locationPermission)
-                          ? Colors.red
-                          : Colors.green,
-                    ),
-                    icon: Icon(_blueLack
-                            .contains(AndroidBluetoothLack.locationPermission)
-                        ? Icons.error
-                        : Icons.done),
-                    label: const Text("Permission",
-                        style: TextStyle(color: Colors.black)),
-                    onPressed: () {
-                      if (_blueLack
-                          .contains(AndroidBluetoothLack.locationPermission)) {
-                        FlutterBlueElves.instance
-                            .androidApplyLocationPermission((isOk) {
-                          print(isOk
-                              ? "User agrees to grant location permission"
-                              : "User does not agree to grant location permission");
-                        });
-                      }
-                    },
-                  ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      backgroundColor: _blueLack
-                              .contains(AndroidBluetoothLack.locationFunction)
-                          ? Colors.red
-                          : Colors.green,
-                    ),
-                    icon: Icon(_blueLack
-                            .contains(AndroidBluetoothLack.locationFunction)
-                        ? Icons.error
-                        : Icons.done),
-                    label: const Text(
-                      "GPS",
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onPressed: () {
-                      if (_blueLack
-                          .contains(AndroidBluetoothLack.locationFunction)) {
-                        FlutterBlueElves.instance
-                            .androidOpenLocationService((isOk) {
-                          print(isOk
-                              ? "The user agrees to turn on the positioning function"
-                              : "The user does not agree to enable the positioning function");
-                        });
-                      }
-                    },
-                  ),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      backgroundColor: _blueLack
-                              .contains(AndroidBluetoothLack.bluetoothFunction)
-                          ? Colors.red
-                          : Colors.green,
-                    ),
-                    icon: Icon(_blueLack
-                            .contains(AndroidBluetoothLack.bluetoothFunction)
-                        ? Icons.error
-                        : Icons.done),
-                    label: const Text(
-                      "Blue",
-                      style: TextStyle(color: Colors.black),
-                    ),
-                    onPressed: () {
-                      if (_blueLack
-                          .contains(AndroidBluetoothLack.bluetoothFunction)) {
-                        FlutterBlueElves.instance
-                            .androidOpenBluetoothService((isOk) {
-                          print(isOk
-                              ? "The user agrees to turn on the Bluetooth function"
-                              : "The user does not agrees to turn on the Bluetooth function");
-                        });
-                      }
-                    },
-                  ),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: _blueLack.contains(
+                                    AndroidBluetoothLack.locationPermission)
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                          icon: Icon(_blueLack.contains(
+                                  AndroidBluetoothLack.locationPermission)
+                              ? Icons.error
+                              : Icons.done),
+                          label: const Text("GPS Permission",
+                              style: TextStyle(color: Colors.black)),
+                          onPressed: () {
+                            if (_blueLack.contains(
+                                AndroidBluetoothLack.locationPermission)) {
+                              FlutterBlueElves.instance
+                                  .androidApplyLocationPermission((isOk) {
+                                print(isOk
+                                    ? "User agrees to grant location permission"
+                                    : "User does not agree to grant location permission");
+                              });
+                            }
+                          },
+                        ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: _blueLack.contains(
+                                    AndroidBluetoothLack.locationFunction)
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                          icon: Icon(_blueLack.contains(
+                                  AndroidBluetoothLack.locationFunction)
+                              ? Icons.error
+                              : Icons.done),
+                          label: const Text(
+                            "GPS",
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onPressed: () {
+                            if (_blueLack.contains(
+                                AndroidBluetoothLack.locationFunction)) {
+                              FlutterBlueElves.instance
+                                  .androidOpenLocationService((isOk) {
+                                print(isOk
+                                    ? "The user agrees to turn on the positioning function"
+                                    : "The user does not agree to enable the positioning function");
+                              });
+                            }
+                          },
+                        ),
+                      ]),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: _blueLack.contains(
+                                    AndroidBluetoothLack.bluetoothPermission)
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                          icon: Icon(_blueLack.contains(
+                                  AndroidBluetoothLack.bluetoothPermission)
+                              ? Icons.error
+                              : Icons.done),
+                          label: const Text("Blue Permission",
+                              style: TextStyle(color: Colors.black)),
+                          onPressed: () {
+                            if (_blueLack.contains(
+                                AndroidBluetoothLack.bluetoothPermission)) {
+                              FlutterBlueElves.instance
+                                  .androidApplyBluetoothPermission((isOk) {
+                                print(isOk
+                                    ? "User agrees to grant Bluetooth permission"
+                                    : "User does not agree to grant Bluetooth permission");
+                              });
+                            }
+                          },
+                        ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: _blueLack.contains(
+                                    AndroidBluetoothLack.bluetoothFunction)
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                          icon: Icon(_blueLack.contains(
+                                  AndroidBluetoothLack.bluetoothFunction)
+                              ? Icons.error
+                              : Icons.done),
+                          label: const Text(
+                            "Blue",
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onPressed: () {
+                            if (_blueLack.contains(
+                                AndroidBluetoothLack.bluetoothFunction)) {
+                              FlutterBlueElves.instance
+                                  .androidOpenBluetoothService((isOk) {
+                                print(isOk
+                                    ? "The user agrees to turn on the Bluetooth function"
+                                    : "The user does not agree to enable the Bluetooth function");
+                              });
+                            }
+                          },
+                        ),
+                      ])
                 ]
               : [
                   TextButton.icon(
@@ -251,7 +285,7 @@ class _MyAppState extends State<MyApp> {
         itemBuilder: (BuildContext context, int index) {
           if (_connectedList.isNotEmpty && index <= _connectedList.length) {
             if (index == 0) {
-              return const Text("Paired device",
+              return const Text("Connected device",
                   style: TextStyle(
                       color: Colors.black,
                       fontSize: 16,
