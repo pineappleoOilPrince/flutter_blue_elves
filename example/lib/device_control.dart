@@ -140,37 +140,39 @@ class _DeviceControlState extends State<DeviceControl> {
                     child: Text("Mtu:$_mtu",
                         style: const TextStyle(color: Colors.white)),
                     onPressed: () {
-                      showDialog<void>(
-                        context: context,
-                        builder: (BuildContext dialogContext) {
-                          return SimpleDialog(
-                            title: const Text('Set Mtu'),
-                            children: <Widget>[
-                              TextField(
-                                keyboardType:TextInputType.number,
-                                autofocus: true,
-                                controller: _sendDataTextController,
-                                decoration: const InputDecoration(
-                                  hintText:
-                                  "Mtu is in [23,512]",
+                      if(Platform.isAndroid){
+                        showDialog<void>(
+                          context: context,
+                          builder: (BuildContext dialogContext) {
+                            return SimpleDialog(
+                              title: const Text('Set Mtu'),
+                              children: <Widget>[
+                                TextField(
+                                  keyboardType:TextInputType.number,
+                                  autofocus: true,
+                                  controller: _sendDataTextController,
+                                  decoration: const InputDecoration(
+                                    hintText:
+                                    "Mtu is in [23,512]",
+                                  ),
                                 ),
-                              ),
-                              TextButton(
-                                child: const Text("request"),
-                                onPressed: () {
-                                  widget._device.androidRequestMtu(int.parse(_sendDataTextController.text), (isSuccess, newMtu){
-                                    setState(() {
-                                      _mtu=newMtu;
+                                TextButton(
+                                  child: const Text("request"),
+                                  onPressed: () {
+                                    widget._device.androidRequestMtu(int.parse(_sendDataTextController.text), (isSuccess, newMtu){
+                                      setState(() {
+                                        _mtu=newMtu;
+                                      });
                                     });
-                                  });
-                                  _sendDataTextController.clear();
-                                  Navigator.pop(dialogContext);
-                                },
-                              )
-                            ],
-                          );
-                        },
-                      );
+                                    _sendDataTextController.clear();
+                                    Navigator.pop(dialogContext);
+                                  },
+                                )
+                              ],
+                            );
+                          },
+                        );
+                      }
                     },
                   ),
                   TextButton(

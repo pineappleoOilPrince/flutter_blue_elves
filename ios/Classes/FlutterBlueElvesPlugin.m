@@ -203,7 +203,7 @@
     Device * device=[self.devicesMap objectForKey:deviceId];//获取自定义的设备对象
     if(device!=nil){
         [device notifyConnectState:1];
-        NSDictionary<NSString *,id> * result=@{@"eventName":@"connected",@"id":deviceId};//因为NSDictionary不可改变，所以一定要这样初始化
+        NSDictionary<NSString *,id> * result=@{@"eventName":@"connected",@"id":deviceId,@"mtu":[NSNumber numberWithLong:[peripheral maximumWriteValueLengthForType:CBCharacteristicWriteWithoutResponse]]};//因为NSDictionary不可改变，所以一定要这样初始化
         [self sendDataToFlutter:result];
     }
 }
