@@ -330,6 +330,7 @@ class Device {
     }
   }
 
+  ///获取当前设备连接状态
   DeviceState get state => _state;
 
   /// 连接设备
@@ -450,7 +451,7 @@ class Device {
   Stream<DeviceSignalResult> get deviceSignalResultStream =>
       _deviceSignalResultStream;
 
-  ///修改设备的mtu,只有android才能用
+  ///修改设备的mtu,只有android 21 以上才能用
   void androidRequestMtu(
       int newMtu, Function(bool isSuccess, int newMtu) callback) {
     _androidRequestMtuCallback = callback;
@@ -458,7 +459,7 @@ class Device {
       //已连接才能去向设备写入数据
       if (newMtu < 23)
         newMtu = 23;
-      else if (newMtu > 512) newMtu = 512;
+      else if (newMtu > 517) newMtu = 517;
       FlutterBlueElves.instance._channel.invokeMethod(
           'requestMtu', {"id": _id, "newMtu": newMtu}).then((isSended) {
         if (!isSended) {
@@ -469,7 +470,7 @@ class Device {
     }
   }
 
-  ///获取当前设备的mtu
+  ///获取当前设备的mtu,默认是23
   int get mtu => _mtu;
 }
 
