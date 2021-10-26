@@ -1,3 +1,6 @@
+## 0.1.4
+Fixed the bug of incomplete Bluetooth defect acquisition on the Android side.
+
 ## 0.1.3
 1. Adapted to Android 12 Bluetooth permission modification.
 2. Added the ability to negotiate mtu with the device(#2).
