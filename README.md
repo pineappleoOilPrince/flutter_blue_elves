@@ -1,7 +1,7 @@
 <br>
 <p align="center">
-<img alt="Flutter" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/flutter.png?raw=true" />
-<img alt="Bluetooth" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/bluetooth.svg?raw=true" />
+<img alt="Flutter" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/main/assets/flutter.png?raw=true" />
+<img alt="Bluetooth" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/main/assets/bluetooth.svg?raw=true" />
 </p>
 <br>
 
@@ -29,7 +29,7 @@ $ flutter pub get
 
 ### Example
 The example include all api usages.In ios,you have to add bluetooth permission tag in info file.
-![img](https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/demo.gif)
+![img](https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/main/assets/demo.gif)
 
 ### Usage
 Import plugin module where you need use.
