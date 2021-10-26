@@ -1,7 +1,7 @@
 <br>
 <p align="center">
-<img alt="Flutter" width=300 src="https://flutter.dev/assets/images/shared/brand/flutter/logo/flutter-lockup.png" />
-<img alt="Bluetooth" width=300 src="https://3pl46c46ctx02p7rzdsvsg21-wpengine.netdna-ssl.com/wp-content/themes/bluetooth/images/logos/bluetooth-logo-color-black.svg" />
+<img alt="Flutter" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/flutter.png?raw=true" />
+<img alt="Bluetooth" width=300 src="https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/bluetooth.svg?raw=true" />
 </p>
 <br>
 
@@ -26,6 +26,11 @@ dependencies:
 ```shell script
 $ flutter pub get
 ```
+
+### Example
+The example include all api usages.In ios,you have to add bluetooth permission tag in info file.
+![img](https://github.com/pineappleoOilPrince/flutter_blue_elves/blob/assets/demo.gif)
+
 ### Usage
 Import plugin module where you need use.
 ```dart

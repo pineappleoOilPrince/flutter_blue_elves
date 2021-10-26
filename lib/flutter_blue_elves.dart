@@ -53,11 +53,14 @@ class FlutterBlueElves {
       List<AndroidBluetoothLack> result = [];
       if (lacks.contains(0)) {
         result.add(AndroidBluetoothLack.locationPermission);
-      } else if (lacks.contains(1)) {
+      }
+      if (lacks.contains(1)) {
         result.add(AndroidBluetoothLack.locationFunction);
-      } else if (lacks.contains(2)) {
+      }
+      if (lacks.contains(2)) {
         result.add(AndroidBluetoothLack.bluetoothFunction);
-      } else if (lacks.contains(3)) {
+      }
+      if (lacks.contains(3)) {
         result.add(AndroidBluetoothLack.bluetoothPermission);
       }
       return result;
