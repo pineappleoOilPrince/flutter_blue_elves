@@ -14,6 +14,9 @@ Modified the wrong comment information.
 ## 0.1.0
 Support Null safe.
 
+## 0.0.3
+Fixed the bug of incomplete Bluetooth defect acquisition on the Android side.
+
 ## 0.0.2
 Fix the bug don't get disconnected notify when connected a device and turn off the bluetooth(#1).
 

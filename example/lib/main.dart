@@ -19,6 +19,7 @@ class _MyAppState extends State<MyApp> {
   List<AndroidBluetoothLack> _blueLack = [];
   IosBluetoothState _iosBlueState = IosBluetoothState.unKnown;
   List<ScanResult> _scanResultList = [];
+  List<HideConnectedDevice> _hideConnectedList = [];
   final List<_ConnectedItem> _connectedList = [];
   bool _isScaning = false;
 
@@ -27,6 +28,7 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     Timer.periodic(const Duration(milliseconds: 2000),
         Platform.isAndroid ? androidGetBlueLack : iosGetBlueState);
+    getHideConnectedDevice();
   }
 
   void iosGetBlueState(timer) {
@@ -41,6 +43,14 @@ class _MyAppState extends State<MyApp> {
     FlutterBlueElves.instance.androidCheckBlueLackWhat().then((values) {
       setState(() {
         _blueLack = values;
+      });
+    });
+  }
+
+  void getHideConnectedDevice() {
+    FlutterBlueElves.instance.getHideConnectedDevices().then((values) {
+      setState(() {
+        _hideConnectedList = values;
       });
     });
   }
@@ -281,6 +291,9 @@ class _MyAppState extends State<MyApp> {
 
       body: ListView.separated(
         itemCount: (_connectedList.isNotEmpty ? _connectedList.length + 1 : 0) +
+            (_hideConnectedList.isNotEmpty
+                ? _hideConnectedList.length + 1
+                : 0) +
             (_scanResultList.isNotEmpty ? _scanResultList.length + 1 : 0),
         itemBuilder: (BuildContext context, int index) {
           if (_connectedList.isNotEmpty && index <= _connectedList.length) {
@@ -373,9 +386,91 @@ class _MyAppState extends State<MyApp> {
                 ),
               );
             }
+          } else if (_hideConnectedList.isNotEmpty &&
+              index -
+                      (_connectedList.isNotEmpty
+                          ? _connectedList.length + 1
+                          : 0) <=
+                  _hideConnectedList.length) {
+            int hideStartIndex =
+                _connectedList.isNotEmpty ? _connectedList.length + 1 : 0;
+            if (index == hideStartIndex) {
+              return const Text("HideConnected",
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold));
+            } else {
+              HideConnectedDevice currentHide =
+                  _hideConnectedList[index - hideStartIndex - 1];
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                          flex: 7,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(currentHide.name ?? "Unnamed device",
+                                  style: const TextStyle(
+                                      color: Colors.black, fontSize: 16)),
+                              Text(
+                                  currentHide.uuids.length.toString() +
+                                      " Service Advertised",
+                                  style: const TextStyle(
+                                      color: Colors.grey, fontSize: 12)),
+                              Text(
+                                  currentHide.macAddress ??
+                                      "Unable to get mac address",
+                                  style: const TextStyle(
+                                      color: Colors.black, fontSize: 12)),
+                            ],
+                          )),
+                      Expanded(
+                          flex: 3,
+                          child: Column(
+                            children: [
+                              ElevatedButton(
+                                  onPressed: () {
+                                    Device toConnectDevice = currentHide
+                                        .connect(connectTimeout: 5000);
+                                    setState(() {
+                                      _connectedList.insert(
+                                          0,
+                                          _ConnectedItem(
+                                              toConnectDevice,
+                                              currentHide.macAddress,
+                                              currentHide.name));
+                                      _hideConnectedList
+                                          .removeAt(index - hideStartIndex - 1);
+                                    });
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) {
+                                          return DeviceControl(
+                                              currentHide.name,
+                                              currentHide.macAddress,
+                                              toConnectDevice);
+                                        },
+                                      ),
+                                    );
+                                  },
+                                  child: const Text("Connect"))
+                            ],
+                          )),
+                    ]),
+              );
+            }
           } else {
             int scanStartIndex =
-                _connectedList.isNotEmpty ? _connectedList.length + 1 : 0;
+                (_connectedList.isNotEmpty ? _connectedList.length + 1 : 0) +
+                    (_hideConnectedList.isNotEmpty
+                        ? _hideConnectedList.length + 1
+                        : 0);
             if (index == scanStartIndex) {
               return const Text("Scan Results",
                   style: TextStyle(
@@ -492,15 +587,15 @@ class _MyAppState extends State<MyApp> {
                           children: [
                             ElevatedButton(
                                 onPressed: () {
-                                  ScanResult scanMsg = _scanResultList[
-                                      index - scanStartIndex - 1];
                                   Device toConnectDevice =
-                                      scanMsg.connect(connectTimeout: 5000);
+                                      currentScan.connect(connectTimeout: 5000);
                                   setState(() {
                                     _connectedList.insert(
                                         0,
-                                        _ConnectedItem(toConnectDevice,
-                                            scanMsg.macAddress, scanMsg.name));
+                                        _ConnectedItem(
+                                            toConnectDevice,
+                                            currentScan.macAddress,
+                                            currentScan.name));
                                     _scanResultList
                                         .removeAt(index - scanStartIndex - 1);
                                   });
@@ -509,8 +604,8 @@ class _MyAppState extends State<MyApp> {
                                     MaterialPageRoute(
                                       builder: (context) {
                                         return DeviceControl(
-                                            scanMsg.name,
-                                            scanMsg.macAddress,
+                                            currentScan.name,
+                                            currentScan.macAddress,
                                             toConnectDevice);
                                       },
                                     ),
@@ -535,9 +630,26 @@ class _MyAppState extends State<MyApp> {
             } else {
               return const Divider(color: Colors.grey);
             }
+          } else if (_hideConnectedList.isNotEmpty &&
+              index -
+                      (_connectedList.isNotEmpty
+                          ? _connectedList.length + 1
+                          : 0) <=
+                  _hideConnectedList.length) {
+            int hideStartIndex =
+                _connectedList.isNotEmpty ? _connectedList.length + 1 : 0;
+            if (index == hideStartIndex ||
+                index == hideStartIndex + _hideConnectedList.length) {
+              return const Divider(color: Colors.white);
+            } else {
+              return const Divider(color: Colors.grey);
+            }
           } else {
             int scanStartIndex =
-                _connectedList.isNotEmpty ? _connectedList.length + 1 : 0;
+                (_connectedList.isNotEmpty ? _connectedList.length + 1 : 0) +
+                    (_hideConnectedList.isNotEmpty
+                        ? _hideConnectedList.length + 1
+                        : 0);
             if (index == scanStartIndex ||
                 index == scanStartIndex + _scanResultList.length) {
               return const Divider(color: Colors.white);
@@ -550,6 +662,7 @@ class _MyAppState extends State<MyApp> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: _isScaning ? Colors.red : Colors.blue,
         onPressed: () {
+          getHideConnectedDevice();
           if ((Platform.isAndroid && _blueLack.isEmpty) ||
               (Platform.isIOS &&
                   _iosBlueState == IosBluetoothState.poweredOn)) {

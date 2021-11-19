@@ -110,6 +110,17 @@ class FlutterBlueElves {
     _scanResultStreamController.close();
   }
 
+  ///获取因为被其他应用连接上而扫描不出来的设备
+  Future<List<HideConnectedDevice>> getHideConnectedDevices(){
+    return _channel.invokeMethod('getHideConnected').then((devices){
+      List<HideConnectedDevice> result=[];
+      for(Map device in devices){
+        result.add(HideConnectedDevice(device["id"],device["name"],device["macAddress"],device["uuids"]));
+      }
+      return result;
+    });
+  }
+
   void _onToDart(dynamic message) {
     //底层发送成功消息时会进入到这个函数来接收
     //print(message);
@@ -477,6 +488,53 @@ class Device {
   int get mtu => _mtu;
 }
 
+///返回的隐藏的已连接对象
+class HideConnectedDevice {
+  ///设备Id
+  late final String _id;
+
+  ///设备名称
+  late final String? _name;
+
+  ///mac地址,ios没有返回
+  late final String? _macAddress;
+
+  ///设备uuid
+  late final List _uuids;
+
+
+  HideConnectedDevice(this._id, this._name, this._macAddress, this._uuids);
+
+  List get uuids => _uuids;
+
+  String? get macAddress => _macAddress;
+
+  String? get name => _name;
+
+  String get id => _id;
+
+  /// 连接设备
+  /// 返回设备对象
+  Device connect({connectTimeout = 0}) {
+    Device? device = FlutterBlueElves.instance._deviceCache[_id];
+    if (device == null) {
+      ///cache里面没有代表之前没有连接过,所以可以用扫描对象连接,除非将device.destroy()
+      device = Device._(_id); //创建设备对象
+      FlutterBlueElves.instance._deviceCache[_id] = device; //将device加入到cache中
+      device._state = DeviceState.connecting; //将对象状态置为连接中
+      FlutterBlueElves.instance._channel.invokeMethod('connect', {
+        "id": _id,
+        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
+        "isFromScan":false
+      }); //去连接
+    } else {
+      ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
+      device.connect(connectTimeout: connectTimeout);
+    }
+    return device;
+  }
+}
+
 ///返回的扫描结果对象
 class ScanResult {
   ///设备Id
@@ -533,7 +591,8 @@ class ScanResult {
       device._state = DeviceState.connecting; //将对象状态置为连接中
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
-        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000
+        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
+        "isFromScan":true
       }); //去连接
     } else {
       ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可

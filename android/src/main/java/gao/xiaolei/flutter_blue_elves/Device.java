@@ -61,6 +61,13 @@ public class Device {
     }
 
     /**
+     * 更新设备对象
+     */
+    public void updateBleDevice(BluetoothDevice newBleDevice){
+        this.bleDevice=newBleDevice;
+    }
+
+    /**
      * 连接设备
      */
     public void connectDevice(int connectTimeOut){
