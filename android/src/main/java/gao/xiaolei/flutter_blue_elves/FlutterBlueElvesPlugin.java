@@ -11,10 +11,8 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanRecord;
 import android.bluetooth.le.ScanResult;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
@@ -67,6 +65,9 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
     private Map<String, BluetoothDevice> hideConnectedDeviceCaches = new HashMap<>();//用于缓存其他应用连接的设备对象
     private boolean scanIsAllowDuplicates = false;//判断扫描设备时是否运行返回重复设备
     private boolean isScanFix=false;//判断此次扫描是不是修复性的扫描
+    private String currentFixDeviceId;//当前扫描的目标设备Id
+    private long fixScanStartTime;//修复扫描的开始时间
+    private int fixScanConnectTimeout;//修复扫描的超时时间
     private Set<String> alreadyScanDeviceMacAddress = new HashSet<>();//用于储存扫描过的设备mac地址
     private Map<String, Device> devicesMap = new HashMap<>();//用于储存设备对象的map
     private static final int REQUEST_CODE_LOCATION_PERMISSION = 2;//申请定位权限的requestCode
@@ -90,8 +91,6 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         channel.setMethodCallHandler(this);
         context = mContext;
         activity=mActivity;
-        IntentFilter statusFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        mContext.registerReceiver(mBluetoothStatusReceive, statusFilter);
         mBluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);//调用系统服务获取蓝牙管理对象
         mBluetoothAdapter = mBluetoothManager.getAdapter();//获取本地蓝牙适配器
         new EventChannel(binaryMessenger, EVENT_CHANNEL).setStreamHandler(new EventChannel.StreamHandler() {//创建对flutter的消息发送channel
@@ -128,10 +127,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         switch (call.method) {
             case "startScan"://如果是扫描设备
                 Map<String, Object> scanParamsMap = call.arguments();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-                    startScan21((boolean) scanParamsMap.get("isAllowDuplicates"), (int) scanParamsMap.get("timeout"),false);
-                else
-                    startScan18((boolean) scanParamsMap.get("isAllowDuplicates"), (int) scanParamsMap.get("timeout"),false);
+                scanDevices((boolean) scanParamsMap.get("isAllowDuplicates"), (int) scanParamsMap.get("timeout"),false,null);
                 result.success(null);
                 break;
             case "stopScan"://如果是停止扫描
@@ -152,7 +148,11 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 if (cache != null) {//如果这个id存在的话
                     Device toConnectDevice = new Device(context, mHandler,cache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback,mtuChangeCallback);
                     devicesMap.put(connectDeviceId,toConnectDevice);
-                    toConnectDevice.connectDevice((int) connectParamsMap.get("timeout"));
+                    int timeout=(int) connectParamsMap.get("timeout");
+                    if(toConnectDevice.isInBleCache())//如果在蓝牙堆栈里就可以直接连接
+                        toConnectDevice.connectDevice(timeout);
+                    else//如果不在蓝牙堆栈里就要先扫描再连接
+                        scanDevices(false,timeout ,true,connectDeviceId);
                     result.success(true);
                 } else result.success(false);
                 break;
@@ -161,8 +161,11 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 String reConnectDeviceId = (String) reConnectParamsMap.get("id") ;
                 Device reConnectDevice=devicesMap.get(reConnectDeviceId);
                 if (reConnectDevice != null) {//如果这个id存在的话
-                    //reConnectDevice.updateBleDevice(mBluetoothAdapter.getRemoteDevice(reConnectDeviceId));
-                    reConnectDevice.connectDevice((int) reConnectParamsMap.get("timeout"));
+                    int timeout=(int) reConnectParamsMap.get("timeout");
+                    if(reConnectDevice.isInBleCache())
+                        reConnectDevice.connectDevice(timeout);
+                    else//如果不在蓝牙堆栈里就要先扫描再连接
+                        scanDevices(false,timeout ,true,reConnectDeviceId);
                     result.success(true);
                 } else result.success(false);
                 break;
@@ -251,7 +254,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 String destroyDeviceId = (String)destroyParamsMap.get("id");
                 Device destroyDevice=devicesMap.remove(destroyDeviceId);
                 if (destroyDevice != null) {//如果这个id存在的话
-                    destroyDevice.initiativeDisConnect();//与设备断开连接
+                    destroyDevice.initiativeDisConnect();//与设备断开连接并销毁连接资源
                     result.success(true);
                 } else result.success(false);
                 break;
@@ -264,6 +267,77 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
         channel.setMethodCallHandler(null);
+    }
+
+    private final ConnectStateCallback mConnectStateCallback = new ConnectStateCallback() {//设备连接状态有改变时就会调用这个函数
+
+        @Override
+        public void connectSuccess(String id) {
+            Map<String, Object> result = new HashMap<>(2);
+            result.put("eventName", "connected");
+            result.put("id", id);
+            sendSuccessMsgToEventChannel(result);//通知上层设备连接成功
+        }
+
+        @Override
+        public void connectTimeout(String id) {
+            Map<String, Object> result = new HashMap<>(2);
+            result.put("eventName", "connectTimeout");
+            result.put("id", id);
+            sendSuccessMsgToEventChannel(result);//通知上层设备连接超时
+        }
+
+        @Override
+        public void disConnected(String id, boolean isInitiative) {
+            Map<String, Object> result = new HashMap<>(2);
+            result.put("id", id);
+            result.put("eventName",isInitiative?"initiativeDisConnected":"disConnected");
+            sendSuccessMsgToEventChannel(result);
+        }
+    };
+
+    private final DiscoverServiceCallback myDiscoverServiceCallback = (id, serviceUuid, characteristic) -> {
+        Map<String, Object> result = new HashMap<>(4);
+        result.put("eventName", "discoverService");
+        result.put("id", id);
+        result.put("serviceUuid", serviceUuid);
+        result.put("characteristic", characteristic);
+        sendSuccessMsgToEventChannel(result);//通知上层发现服务
+    };
+
+    private final DeviceSignalCallback mDeviceSignalCallback= (type, id, uuid, isSuccess, data) -> {
+        Map<String, Object> result = new HashMap<>(6);
+        result.put("eventName", "deviceSignal");
+        result.put("type", type);
+        result.put("id", id);
+        result.put("uuid", uuid);
+        result.put("isSuccess", isSuccess);
+        result.put("data", data);
+        sendSuccessMsgToEventChannel(result);
+    };
+
+    private final MtuChangeCallback mtuChangeCallback= (id, isSuccess, newMtu) -> {
+        Map<String, Object> result = new HashMap<>(4);
+        result.put("eventName", "mtuChange");
+        result.put("id", id);
+        result.put("isSuccess", isSuccess);
+        result.put("newMtu", newMtu);
+        sendSuccessMsgToEventChannel(result);
+    };
+
+    /**
+     * 扫描设备
+     */
+    private void scanDevices(boolean isAllowDuplicates,int timeout,boolean isScanFix,String fixTarget){
+        if(isScanFix) {//如果是修复扫描
+            currentFixDeviceId = fixTarget;
+            fixScanConnectTimeout=timeout;
+            fixScanStartTime=System.currentTimeMillis();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+            startScan21(isAllowDuplicates, timeout,isScanFix);
+        else
+            startScan18(isAllowDuplicates, timeout,isScanFix);
     }
 
     /**
@@ -307,8 +381,8 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         mHandler.removeCallbacks(scanTimeoutCallback18);//先停止定时任务
         mBluetoothAdapter.stopLeScan(mScanCallback18);//先停止扫描
         mBluetoothAdapter.startLeScan(mScanCallback18);//开始扫描
-        if (timeout > 0)
-            mHandler.postDelayed(scanTimeoutCallback18, timeout);//设置到达最大扫描时间之后的回调
+        if (timeout > 0||isFix)
+            mHandler.postDelayed(scanTimeoutCallback18, isFix?(timeout>0?timeout:10000):timeout);//设置到达最大扫描时间之后的回调
     }
 
     /**
@@ -351,10 +425,14 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
      */
     private Runnable scanTimeoutCallback18 = () -> {
         mBluetoothAdapter.stopLeScan(mScanCallback18);
-        if(!isScanFix){
+        if(!isScanFix){//如果是正常扫描
             Map<String, Object> result = new HashMap<>(1);
             result.put("eventName", "scanTimeout");
             sendSuccessMsgToEventChannel(result);//通知上层扫描时间已经到了
+        }else{
+            if(fixScanConnectTimeout>0)//只有设置了超时时间才要通知上层目标设备连接超时
+                mConnectStateCallback.connectTimeout(currentFixDeviceId);
+            else mConnectStateCallback.disConnected(currentFixDeviceId,false);//如果没有设置超时时间则通知上层连接失败
         }
     };
 
@@ -370,8 +448,8 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
         scanner.stopScan(getScanCallback21());//先停止扫描
         scanner.startScan(getScanCallback21());
-        if (timeout > 0)
-            mHandler.postDelayed(getScanTimeoutCallback21(), timeout);//设置到达最大扫描时间之后的回调
+        if (timeout > 0||isFix)
+            mHandler.postDelayed(getScanTimeoutCallback21(), isFix?(timeout>0?timeout:10000):timeout);//设置到达最大扫描时间之后的回调
     }
 
     /**
@@ -394,10 +472,14 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
             scanTimeoutCallback21= () -> {
                 BluetoothLeScanner scanner = mBluetoothAdapter.getBluetoothLeScanner();
                 scanner.stopScan(getScanCallback21());//停止扫描
-                if(!isScanFix){
+                if(!isScanFix){//如果是正常扫描
                     Map<String, Object> result = new HashMap<>(1);
                     result.put("eventName", "scanTimeout");
                     sendSuccessMsgToEventChannel(result);//通知上层扫描时间已经到了
+                }else{
+                    if(fixScanConnectTimeout>0)//只有设置了超时时间才要通知上层目标设备连接超时
+                        mConnectStateCallback.connectTimeout(currentFixDeviceId);
+                    else mConnectStateCallback.disConnected(currentFixDeviceId,false);//如果没有设置超时时间则通知上层连接失败
                 }
             };
         }
@@ -459,9 +541,17 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
      */
     private void handleFixScanResult(BluetoothDevice device) {
         if (alreadyScanDeviceMacAddress.add(device.getAddress())) {//如果设备没有重复
-            Device fixDevice=devicesMap.get(device.getAddress());
-            if(fixDevice!=null)
-                fixDevice.updateBleDevice(device);//替换掉里面的设备对象
+            Device currentDevice=devicesMap.get(device.getAddress());
+            if(device.getAddress().equals(currentFixDeviceId)){//如果是目标设备
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+                    stopScan21();//停止扫描以及扫描定时
+                else
+                    stopScan18();//停止扫描以及扫描定时
+                long timeLeft=fixScanConnectTimeout>0?(fixScanConnectTimeout-(System.currentTimeMillis()-fixScanStartTime)):0;//计算除去扫描所用的时间还剩多少时间用于连接设备
+                currentDevice.updateBleDevice(device);//替换掉里面的设备对象
+                currentDevice.connectDevice((int) timeLeft);
+            }else if(currentDevice!=null&&!currentDevice.isInBleCache())//如果不是目标设备但是也在蓝牙cache中并且之前的对象没有被蓝牙堆栈缓存
+                currentDevice.updateBleDevice(device);//替换掉里面的设备对象
         }
     }
 
@@ -644,79 +734,6 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
     public void onDetachedFromActivity() {
 
     }
-
-    //监听蓝牙重启事件
-    private BroadcastReceiver mBluetoothStatusReceive = new BroadcastReceiver() {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if(BluetoothAdapter.ACTION_STATE_CHANGED==intent.getAction()){
-                int blueState = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, 0);
-                if(blueState==BluetoothAdapter.STATE_ON){
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
-                        startScan21(false, 10000,true);
-                    else
-                        startScan18(false, 10000,true);
-                }
-            }
-        }
-    };
-
-    private final ConnectStateCallback mConnectStateCallback = new ConnectStateCallback() {//设备连接状态有改变时就会调用这个函数
-
-        @Override
-        public void connectSuccess(String id) {
-            Map<String, Object> result = new HashMap<>(2);
-            result.put("eventName", "connected");
-            result.put("id", id);
-            sendSuccessMsgToEventChannel(result);//通知上层设备连接成功
-        }
-
-        @Override
-        public void connectTimeout(String id) {
-            Map<String, Object> result = new HashMap<>(2);
-            result.put("eventName", "connectTimeout");
-            result.put("id", id);
-            sendSuccessMsgToEventChannel(result);//通知上层设备连接超时
-        }
-
-        @Override
-        public void disConnected(String id, boolean isInitiative) {
-            Map<String, Object> result = new HashMap<>(2);
-            result.put("id", id);
-            result.put("eventName",isInitiative?"initiativeDisConnected":"disConnected");
-            sendSuccessMsgToEventChannel(result);
-        }
-    };
-
-    private final DiscoverServiceCallback myDiscoverServiceCallback = (id, serviceUuid, characteristic) -> {
-        Map<String, Object> result = new HashMap<>(4);
-        result.put("eventName", "discoverService");
-        result.put("id", id);
-        result.put("serviceUuid", serviceUuid);
-        result.put("characteristic", characteristic);
-        sendSuccessMsgToEventChannel(result);//通知上层发现服务
-    };
-
-    private final DeviceSignalCallback mDeviceSignalCallback= (type, id, uuid, isSuccess, data) -> {
-        Map<String, Object> result = new HashMap<>(6);
-        result.put("eventName", "deviceSignal");
-        result.put("type", type);
-        result.put("id", id);
-        result.put("uuid", uuid);
-        result.put("isSuccess", isSuccess);
-        result.put("data", data);
-        sendSuccessMsgToEventChannel(result);
-    };
-
-    private final MtuChangeCallback mtuChangeCallback= (id, isSuccess, newMtu) -> {
-        Map<String, Object> result = new HashMap<>(4);
-        result.put("eventName", "mtuChange");
-        result.put("id", id);
-        result.put("isSuccess", isSuccess);
-        result.put("newMtu", newMtu);
-        sendSuccessMsgToEventChannel(result);
-    };
 
 
     /**

@@ -37,6 +37,7 @@ public class Device {
     private Handler mHandler;//为了开启定时任务
     private boolean isConnectedDevice=false;//判断是否曾经连接上设备
     private boolean isInitiativeDisConnect=false;//判断是否是手动断开连接
+    private short connectRetryTimes=0;//连接重试次数
     private ConnectStateCallback connectStateCallback;//连接状态的回调
     private DeviceSignalCallback deviceSignalCallback;//设备传回数据时的回调
     private DiscoverServiceCallback discoverServiceCallback;//发现蓝牙服务之后的回调
@@ -68,10 +69,18 @@ public class Device {
     }
 
     /**
+     * 判断设备对象是否有被蓝牙堆栈缓存
+     */
+    public boolean isInBleCache(){
+        return !(bleDevice.getType()==BluetoothDevice.DEVICE_TYPE_UNKNOWN);
+    }
+
+    /**
      * 连接设备
      */
     public void connectDevice(int connectTimeOut){
         if(state==0){//如果当前是未连接的状态
+            connectRetryTimes=0;
             state=1;
             isConnectedDevice=false;//设置当前还未连接上过设备
             isInitiativeDisConnect=false;//设置如果断开连接不是手动断开的连接
@@ -91,6 +100,11 @@ public class Device {
         if(state==2){//如果是已经连接才能去断开连接
             isInitiativeDisConnect=true;//标记当前是手动断开的
             mBleGatt.disconnect();//断开连接
+        }else{//如果本身没有连接就直接销毁连接资源
+            if(mBleGatt!=null){
+                mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
+                mBleGatt=null;
+            }
         }
     }
 
@@ -203,20 +217,28 @@ public class Device {
         //连接状态改变
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                if (newState == BluetoothProfile.STATE_CONNECTED) { //连接成功
-                    isConnectedDevice=true;//标志曾经连接上设备
+            if (newState == BluetoothProfile.STATE_CONNECTED) { //连接成功
+                isConnectedDevice=true;//标志曾经连接上设备
+                mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
+                state=2;//将状态修改为已连接
+                connectStateCallback.connectSuccess(bleDevice.getAddress());//连接成功后的调用
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //断开连接
+                if(mBleGatt!=null){
+                    mBleGatt.close();
+                    mBleGatt=null;
+                }
+                if(status==133&&!isConnectedDevice&&connectRetryTimes++<3) {//如果是133就要尝试去重连
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                        mBleGatt = bleDevice.connectGatt(mContext, false, mGattCallback, BluetoothDevice.TRANSPORT_LE);
+                    else
+                        mBleGatt = bleDevice.connectGatt(mContext, false, mGattCallback);
+                }else{
                     mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
-                    state=2;//将状态修改为已连接
-                    connectStateCallback.connectSuccess(bleDevice.getAddress());//连接成功后的调用
-                } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //断开连接
                     state=0;
-                    if(mBleGatt!=null){
-                        mBleGatt.close();
-                        mBleGatt=null;
-                    }
                     if(isConnectedDevice)//曾经连接上才叫断开,不然就是连接失败
                         connectStateCallback.disConnected(bleDevice.getAddress(),isInitiativeDisConnect);//断开连接后的调用
                 }
+            }
         }
 
         //发现新服务

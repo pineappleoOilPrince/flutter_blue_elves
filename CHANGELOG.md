@@ -1,3 +1,7 @@
+## 0.1.6
+1. Added measures to cope with connection error 133 on the android side.
+2. Fixed the bug that the Android device cannot be directly connected to the device after Bluetooth restarts.
+
 ## 0.1.5
 1. Fixed the bug of could not automatically stop scanning over time on the Android side.
 2. Added the ability to obtain devices that cannot be scanned because they are connected by other apps on the phone.

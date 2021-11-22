@@ -350,7 +350,7 @@ class _MyAppState extends State<MyApp> {
                                     currentConnected._device.disConnect();
                                   } else {
                                     currentConnected._device
-                                        .connect(connectTimeout: 5000);
+                                        .connect(connectTimeout: 10000);
                                   }
                                 },
                               ),
@@ -436,7 +436,7 @@ class _MyAppState extends State<MyApp> {
                               ElevatedButton(
                                   onPressed: () {
                                     Device toConnectDevice = currentHide
-                                        .connect(connectTimeout: 5000);
+                                        .connect(connectTimeout: 10000);
                                     setState(() {
                                       _connectedList.insert(
                                           0,
@@ -587,8 +587,8 @@ class _MyAppState extends State<MyApp> {
                           children: [
                             ElevatedButton(
                                 onPressed: () {
-                                  Device toConnectDevice =
-                                      currentScan.connect(connectTimeout: 5000);
+                                  Device toConnectDevice = currentScan.connect(
+                                      connectTimeout: 10000);
                                   setState(() {
                                     _connectedList.insert(
                                         0,

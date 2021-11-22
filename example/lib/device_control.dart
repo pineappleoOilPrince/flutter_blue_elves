@@ -186,7 +186,7 @@ class _DeviceControlState extends State<DeviceControl> {
                       if (_deviceState == DeviceState.connected) {
                         widget._device.disConnect();
                       } else {
-                        widget._device.connect(connectTimeout: 5000);
+                        widget._device.connect(connectTimeout: 10000);
                       }
                     },
                   )
