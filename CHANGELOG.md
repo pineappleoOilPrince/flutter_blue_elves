@@ -1,3 +1,7 @@
+## 0.1.5
+1. Fixed the bug of could not automatically stop scanning over time on the Android side.
+2. Added the ability to obtain devices that cannot be scanned because they are connected by other apps on the phone.
+
 ## 0.1.4
 Fixed the bug of incomplete Bluetooth defect acquisition on the Android side.
 

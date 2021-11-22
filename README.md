@@ -21,7 +21,7 @@ This project is a flutter plugin,so you use it by add dependencies in your pubsp
 dependencies:
   flutter:
     sdk: flutter
-  flutter_blue_elves: ^0.1.4
+  flutter_blue_elves: ^0.1.5
 ```
 ```shell script
 $ flutter pub get
@@ -37,6 +37,12 @@ Import plugin module where you need use.
 import 'package:flutter_blue_elves/flutter_blue_elves.dart';
 ```
 #### Check bluetooth function is Ok.
+||Effect|Need version|
+|:-|:-|:-|
+|Bluetooth permission|1. Scan for Bluetooth devices;<br>2. Connect with Bluetooth devices;<br>3. Communicate with Bluetooth devices|Android 12+|
+|Location permission|1. Scan for Bluetooth devices;<br>2. Scan bluetooth device with physical location of the device;|ALL|
+|location function|Same as Location permission|ALL|
+|Bluetooth function|Use Bluetooth|ALL|
 ```dart
 ///Android:
 FlutterBlueElves.instance.androidCheckBlueLackWhat().then((values) {
@@ -107,6 +113,15 @@ device.stateStream.listen((newState){
 
 ///stop scan
 FlutterBlueElves.instance.stopScan();
+```
+
+#### Obtain devices that cannot be scanned because they are connected by other apps on the phone.
+```dart
+///Get Hide device.
+///Because it is not scanned, some device information will be missing compared with the scanned results
+FlutterBlueElves.instance.getHideConnectedDevices().then((values) {
+  
+});
 ```
 
 #### Discovery device's bluetooth service,witch work in connected.

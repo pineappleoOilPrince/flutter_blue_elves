@@ -111,11 +111,12 @@ class FlutterBlueElves {
   }
 
   ///获取因为被其他应用连接上而扫描不出来的设备
-  Future<List<HideConnectedDevice>> getHideConnectedDevices(){
-    return _channel.invokeMethod('getHideConnected').then((devices){
-      List<HideConnectedDevice> result=[];
-      for(Map device in devices){
-        result.add(HideConnectedDevice(device["id"],device["name"],device["macAddress"],device["uuids"]));
+  Future<List<HideConnectedDevice>> getHideConnectedDevices() {
+    return _channel.invokeMethod('getHideConnected').then((devices) {
+      List<HideConnectedDevice> result = [];
+      for (Map device in devices) {
+        result.add(HideConnectedDevice(device["id"], device["name"],
+            device["macAddress"], device["uuids"]));
       }
       return result;
     });
@@ -502,7 +503,6 @@ class HideConnectedDevice {
   ///设备uuid
   late final List _uuids;
 
-
   HideConnectedDevice(this._id, this._name, this._macAddress, this._uuids);
 
   List get uuids => _uuids;
@@ -525,7 +525,7 @@ class HideConnectedDevice {
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
         "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
-        "isFromScan":false
+        "isFromScan": false
       }); //去连接
     } else {
       ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
@@ -592,7 +592,7 @@ class ScanResult {
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
         "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
-        "isFromScan":true
+        "isFromScan": true
       }); //去连接
     } else {
       ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
