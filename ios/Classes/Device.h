@@ -28,4 +28,3 @@
 @end
 
 #endif /* Device_h */
-

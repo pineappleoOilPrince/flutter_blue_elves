@@ -3,12 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/services.dart';
 import 'dart:io';
 
+///中央处理类,用于扫描设备以及与底层通信
 class FlutterBlueElves {
   static FlutterBlueElves instance = FlutterBlueElves._();
   MethodChannel _channel;
   EventChannel _eventChannelPlugin;
   StreamSubscription _eventStreamSubscription;
   StreamController<ScanResult> _scanResultStreamController;
+  Function(bool isOk) _androidApplyBluetoothPermissionCallback;
   Function(bool isOk) _androidApplyLocationPermissionCallback;
   Function(bool isOk) _androidOpenLocationServiceCallback;
   Function(bool isOk) _androidOpenBluetoothServiceCallback;
@@ -19,7 +21,7 @@ class FlutterBlueElves {
     _deviceCache = {};
     _channel = const MethodChannel("flutter_blue_elves/method");
     _eventChannelPlugin =
-        const EventChannel("flutter_blue_elves/event"); //定义接收底层操作系统主动发来的消息通道;
+        const EventChannel("flutter_blue_elves/event"); //定义接收底层操作系统主动发来的消息通道
     _eventStreamSubscription = _eventChannelPlugin
         .receiveBroadcastStream()
         .listen(_onToDart,
@@ -58,23 +60,32 @@ class FlutterBlueElves {
       if (lacks.contains(2)) {
         result.add(AndroidBluetoothLack.bluetoothFunction);
       }
+      if (lacks.contains(3)) {
+        result.add(AndroidBluetoothLack.bluetoothPermission);
+      }
       return result;
     });
   }
 
-  ///调用底层去跟获取定位权限,安卓专用
+  ///调用底层去获取蓝牙权限,安卓12专用
+  void androidApplyBluetoothPermission(Function(bool isOk) callback) {
+    _androidApplyBluetoothPermissionCallback = callback;
+    _channel.invokeMethod('applyBluetoothPermission');
+  }
+
+  ///调用底层去获取定位权限,安卓专用
   void androidApplyLocationPermission(Function(bool isOk) callback) {
     _androidApplyLocationPermissionCallback = callback;
     _channel.invokeMethod('applyLocationPermission');
   }
 
-  ///调用底层去跟开启定位功能,安卓专用
+  ///调用底层去开启定位功能,安卓专用
   void androidOpenLocationService(Function(bool isOk) callback) {
     _androidOpenLocationServiceCallback = callback;
     _channel.invokeMethod('openLocationService');
   }
 
-  ///调用底层去跟开启蓝牙功能,安卓专用
+  ///调用底层去开启蓝牙功能,安卓专用
   void androidOpenBluetoothService(Function(bool isOk) callback) {
     _androidOpenBluetoothServiceCallback = callback;
     _channel.invokeMethod('openBluetoothService');
@@ -99,10 +110,28 @@ class FlutterBlueElves {
     _scanResultStreamController.close();
   }
 
+  ///获取因为被其他应用连接上而扫描不出来的设备
+  Future<List<HideConnectedDevice>> getHideConnectedDevices() {
+    return _channel.invokeMethod('getHideConnected').then((devices) {
+      List<HideConnectedDevice> result = [];
+      for (Map device in devices) {
+        result.add(HideConnectedDevice(device["id"], device["name"],
+            device["macAddress"], device["uuids"]));
+      }
+      return result;
+    });
+  }
+
   void _onToDart(dynamic message) {
     //底层发送成功消息时会进入到这个函数来接收
     //print(message);
     switch (message['eventName']) {
+      case "allowBluetoothPermission":
+        _androidApplyBluetoothPermissionCallback(true);
+        break;
+      case "denyBluetoothPermission":
+        _androidApplyBluetoothPermissionCallback(false);
+        break;
       case "allowLocationPermission":
         _androidApplyLocationPermissionCallback(true);
         break;
@@ -139,6 +168,12 @@ class FlutterBlueElves {
       case "connected":
         Device deviceCache = _deviceCache[message['id']];
         if (deviceCache != null) {
+          if (Platform.isIOS) {
+            //因为ios是自动根据设备支持的mtu来自行调整的,不像android是默认23的
+            deviceCache._mtu = message['mtu'];
+          } else {
+            deviceCache._mtu = 23; //重置mtu
+          }
           deviceCache._stateStreamController
               .add(DeviceState.connected); //广播设备状态变化
           deviceCache._state = DeviceState.connected; //将设备状态设置为已连接
@@ -252,6 +287,14 @@ class FlutterBlueElves {
                   message['data']));
         }
         break;
+      case "mtuChange": //如果是设备mtu修改了
+        Device deviceCache = _deviceCache[message['id']];
+        if (deviceCache != null) {
+          deviceCache._mtu = message['newMtu'];
+          deviceCache._androidRequestMtuCallback(
+              message['isSuccess'], message['newMtu']);
+        }
+        break;
     }
   }
 
@@ -265,15 +308,18 @@ class FlutterBlueElves {
 class Device {
   final String _id; //设备Id
   DeviceState _state;
+  int _mtu;
   StreamController<DeviceState> _stateStreamController;
   Stream<DeviceState> _stateStream;
   StreamController<BleService> _serviceDiscoveryStreamController;
   Stream<BleService> _serviceDiscoveryStream;
   StreamController<DeviceSignalResult> _deviceSignalResultStreamController;
   Stream<DeviceSignalResult> _deviceSignalResultStream;
+  Function(bool isSuccess, int newMtu) _androidRequestMtuCallback;
 
   Device._(this._id) {
     _state = DeviceState.disconnected;
+    _mtu = 23;
     _stateStreamController = StreamController<DeviceState>();
     _stateStream = _stateStreamController.stream.asBroadcastStream();
     _serviceDiscoveryStreamController = StreamController<BleService>();
@@ -285,7 +331,7 @@ class Device {
         _deviceSignalResultStreamController.stream.asBroadcastStream();
   }
 
-  ///销毁设备对象,不然可能会存在重复的设备对象
+  ///销毁设备对象,不然可能会存在重复的设备对象,当
   void destroy() {
     if (_state != DeviceState.destroyed) {
       _state = DeviceState.destroyed; //将设备状态置为已销毁
@@ -299,6 +345,7 @@ class Device {
     }
   }
 
+  ///获取当前设备连接状态
   DeviceState get state => _state;
 
   /// 连接设备
@@ -418,6 +465,74 @@ class Device {
   ///获取设备返回数据的结果广播流
   Stream<DeviceSignalResult> get deviceSignalResultStream =>
       _deviceSignalResultStream;
+
+  ///修改设备的mtu,只有android 21 以上才能用
+  void androidRequestMtu(
+      int newMtu, Function(bool isSuccess, int newMtu) callback) {
+    _androidRequestMtuCallback = callback;
+    if (_state != DeviceState.destroyed && _state == DeviceState.connected) {
+      //已连接才能去向设备写入数据
+      if (newMtu < 23)
+        newMtu = 23;
+      else if (newMtu > 517) newMtu = 517;
+      FlutterBlueElves.instance._channel.invokeMethod(
+          'requestMtu', {"id": _id, "newMtu": newMtu}).then((isSended) {
+        if (!isSended) {
+          //如果发送请求失败
+          _androidRequestMtuCallback(false, _mtu);
+        }
+      }); //去修改设备mtu
+    }
+  }
+
+  ///获取当前设备的mtu,默认是23
+  int get mtu => _mtu;
+}
+
+///返回的隐藏的已连接对象
+class HideConnectedDevice {
+  ///设备Id
+  final String _id;
+
+  ///设备名称
+  final String _name;
+
+  ///mac地址,ios没有返回
+  final String _macAddress;
+
+  ///设备uuid
+  final List _uuids;
+
+  HideConnectedDevice(this._id, this._name, this._macAddress, this._uuids);
+
+  List get uuids => _uuids;
+
+  String get macAddress => _macAddress;
+
+  String get name => _name;
+
+  String get id => _id;
+
+  /// 连接设备
+  /// 返回设备对象
+  Device connect({connectTimeout = 0}) {
+    Device device = FlutterBlueElves.instance._deviceCache[_id];
+    if (device == null) {
+      ///cache里面没有代表之前没有连接过,所以可以用扫描对象连接,除非将device.destroy()
+      device = Device._(_id); //创建设备对象
+      FlutterBlueElves.instance._deviceCache[_id] = device; //将device加入到cache中
+      device._state = DeviceState.connecting; //将对象状态置为连接中
+      FlutterBlueElves.instance._channel.invokeMethod('connect', {
+        "id": _id,
+        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
+        "isFromScan": false
+      }); //去连接
+    } else {
+      ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
+      device.connect(connectTimeout: connectTimeout);
+    }
+    return device;
+  }
 }
 
 ///返回的扫描结果对象
@@ -470,16 +585,17 @@ class ScanResult {
   Device connect({connectTimeout = 0}) {
     Device device = FlutterBlueElves.instance._deviceCache[_id];
     if (device == null) {
-      //cache里面没有代表之前没有连接过,所以可以连接,除非将device.destroy()
+      ///cache里面没有代表之前没有连接过,所以可以用扫描对象连接,除非将device.destroy()
       device = Device._(_id); //创建设备对象
       FlutterBlueElves.instance._deviceCache[_id] = device; //将device加入到cache中
       device._state = DeviceState.connecting; //将对象状态置为连接中
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
-        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000
+        "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
+        "isFromScan": true
       }); //去连接
     } else {
-      //如果之前就要这个设备对象就直接返回就好了
+      ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
       device.connect(connectTimeout: connectTimeout);
     }
     return device;
@@ -537,7 +653,7 @@ class DeviceSignalResult {
   ///信号类型
   final DeviceSignalType _type;
 
-  ///UUID
+  ///UUID,要么是特征值uuid,要么是描述uuid
   final String _uuid;
 
   ///是否成功
@@ -560,6 +676,9 @@ class DeviceSignalResult {
 
 ///标示android平台缺少哪些蓝牙必须功能的枚举类
 enum AndroidBluetoothLack {
+  ///没有授予定位权限
+  bluetoothPermission,
+
   ///没有授予定位权限
   locationPermission,
 

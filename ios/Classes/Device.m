@@ -110,8 +110,7 @@
         //NSLog(@"设备连接成功");
         [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(connectTimeoutCallback) object:nil];//取消最大连接时间的定时任务
         self.state=2;
-    }else//如果设备连接失败
-        //NSLog(@"设备连接失败");
+    }
 }
 
 // 发现外设的服务后的回调
@@ -259,4 +258,3 @@
     else return [NSData data];
 }
 @end
-
