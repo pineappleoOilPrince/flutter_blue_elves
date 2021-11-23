@@ -10,9 +10,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
-
 import androidx.annotation.RequiresApi;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +18,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import gao.xiaolei.flutter_blue_elves.callback.ConnectStateCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DeviceSignalCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DiscoverServiceCallback;
@@ -100,11 +97,6 @@ public class Device {
         if(state==2){//如果是已经连接才能去断开连接
             isInitiativeDisConnect=true;//标记当前是手动断开的
             mBleGatt.disconnect();//断开连接
-        }else{//如果本身没有连接就直接销毁连接资源
-            if(mBleGatt!=null){
-                mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
-                mBleGatt=null;
-            }
         }
     }
 
