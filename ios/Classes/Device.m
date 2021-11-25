@@ -38,6 +38,7 @@
 }
 
 -(void)destroy{
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(connectTimeoutCallback) object:nil];//取消最大连接时间的定时任务
     [self initiativeDisConnect];
     self.centralManager = nil;
     self.pluginInstance=nil;

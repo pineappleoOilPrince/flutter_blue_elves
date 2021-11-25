@@ -1,3 +1,6 @@
+## 0.0.5
+Fixed the bug that the ios terminal crashed when calling the destroy method during the connection process.
+
 ## 0.0.4
 1. Adapted to Android 12 Bluetooth permission modification.
 2. Added the ability to negotiate mtu with the device(#2).

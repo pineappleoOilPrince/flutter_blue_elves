@@ -59,6 +59,23 @@ public class Device {
     }
 
     /**
+     * 销毁对象
+     */
+    public void destroy(){
+        mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
+        if(state==2){//如果是已经连接才能去断开连接
+            isInitiativeDisConnect=true;//标记当前是手动断开的
+            mBleGatt.disconnect();//断开连接
+        }else{//如果未连接就直接将连接资源关闭
+            if(mBleGatt!=null){
+                mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
+                mBleGatt=null;
+                state=0;
+            }
+        }
+    }
+
+    /**
      * 更新设备对象
      */
     public void updateBleDevice(BluetoothDevice newBleDevice){

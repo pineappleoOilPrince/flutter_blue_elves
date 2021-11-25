@@ -254,7 +254,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 String destroyDeviceId = (String)destroyParamsMap.get("id");
                 Device destroyDevice=devicesMap.remove(destroyDeviceId);
                 if (destroyDevice != null) {//如果这个id存在的话
-                    destroyDevice.initiativeDisConnect();//与设备断开连接并销毁连接资源
+                    destroyDevice.destroy();//进行对象的销毁工作
                     result.success(true);
                 } else result.success(false);
                 break;
