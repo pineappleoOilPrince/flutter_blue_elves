@@ -21,7 +21,7 @@ This project is a flutter plugin,so you use it by add dependencies in your pubsp
 dependencies:
   flutter:
     sdk: flutter
-  flutter_blue_elves: ^0.1.6
+  flutter_blue_elves: ^0.1.7
 ```
 ```shell script
 $ flutter pub get
