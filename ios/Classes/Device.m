@@ -85,8 +85,8 @@
 
 -(void)writeDataToDevice:(NSString *)serviceUuid characteristicUuid:(NSString *)characteristicUuid isNoResponse:(BOOL) isNoResponse data:(NSData *) data{
     CBCharacteristic * characteristic=[self getBlueCharacteristic:serviceUuid characteristicUuid:characteristicUuid];
-    if(characteristic!=nil)//如果设置了CBCharacteristicWriteWithResponse，则写入数据之后不会进入写入回调
-        [self.peripheral writeValue:data forCharacteristic:characteristic type:isNoResponse? CBCharacteristicWriteWithResponse:CBCharacteristicWriteWithResponse];
+    if(characteristic!=nil)//如果设置了CBCharacteristicWriteWithoutResponse，则写入数据之后不会进入写入回调
+        [self.peripheral writeValue:data forCharacteristic:characteristic type:isNoResponse? CBCharacteristicWriteWithoutResponse:CBCharacteristicWriteWithResponse];
 }
 
 -(void)readDescriptorDataToDevice:(NSString *)serviceUuid characteristicUuid:(NSString *)characteristicUuid descriptorUuid:(NSString *)descriptorUuid{

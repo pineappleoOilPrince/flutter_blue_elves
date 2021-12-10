@@ -1,3 +1,6 @@
+## 0.1.8
+Fixed the bug that isNoResponse param is not working in Ios side (#4).
+
 ## 0.1.7
 Fixed the bug that the ios terminal crashed when calling the destroy method during the connection process.
 
@@ -24,6 +27,13 @@ Modified the wrong comment information.
 
 ## 0.1.0
 Support Null safe.
+
+## 0.0.6
+Fixed the bug that isNoResponse param is not working in Ios side (#4).
+
+## 0.0.5
+Fixed the bug that the ios terminal crashed when calling the destroy method during the connection process.
+
 
 ## 0.0.4
 1. Adapted to Android 12 Bluetooth permission modification.
