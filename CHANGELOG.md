@@ -1,3 +1,6 @@
+## 0.0.6
+Fixed the bug that isNoResponse param is not working in Ios side (#4).
+
 ## 0.0.5
 Fixed the bug that the ios terminal crashed when calling the destroy method during the connection process.
 
