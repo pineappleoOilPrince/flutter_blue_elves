@@ -82,7 +82,7 @@
                 [self.hideConnectedDeviceCaches removeObjectForKey:deviceId];
             Device * toConnectDevice=[self.devicesMap objectForKey:deviceId];
             if(toConnectDevice==nil){//如果本来就有这个设备就不用再创一个了
-                toConnectDevice=[[Device alloc] init:deviceId centralManager:self.centralManager peripheral:cache pluginInstance:self];
+                toConnectDevice=[[Device alloc] init:deviceId centralManager:self.centralManager peripheral:cache pluginInstance:self rssi:[dataMap objectForKey:@"rssi"]];
                 [self.devicesMap setValue:toConnectDevice forKey:deviceId];
             }
             [toConnectDevice connectDevice:[[dataMap objectForKey:@"timeout"] intValue]];
@@ -162,6 +162,13 @@
             [device writeDescriptorDataToDevice:[dataMap objectForKey:@"serviceUuid"] characteristicUuid:[dataMap objectForKey:@"characteristicUuid"] descriptorUuid:[dataMap objectForKey:@"descriptorUuid"] data:flutterData.data];
             result([NSNumber numberWithBool:YES]);
         }
+        result([NSNumber numberWithBool:NO]);
+    }else if([@"watchRssi" isEqualToString:call.method]){//如果是开始监听rssi的变化
+        NSDictionary<NSString *,id> * dataMap=call.arguments;
+        NSString * deviceId=[dataMap objectForKey:@"id"];
+        Device * device=[self.devicesMap objectForKey:deviceId];
+        if(device!=nil)//如果这个id存在的话
+            result([NSNumber numberWithBool:[device watchRssi:[[dataMap objectForKey:@"isStart"] boolValue]]]);
         result([NSNumber numberWithBool:NO]);
     }else if([@"destroy" isEqualToString:call.method]){//如果是销毁对象
         NSDictionary<NSString *,id> * dataMap=call.arguments;
@@ -296,6 +303,12 @@
 //设备传回数据的回调
 -(void)signalCallback:(short)type deviceId:(NSString *)deviceId uuid:(NSString*) uuid isSuccess:(BOOL)isSuccess data:(NSData *)data{
     NSDictionary<NSString *,id> * result=@{@"eventName":@"deviceSignal",@"id":deviceId,@"type":[NSNumber numberWithShort:type],@"uuid":uuid,@"isSuccess":[NSNumber numberWithBool:isSuccess],@"data":data==nil?[NSNull null]:[FlutterStandardTypedData typedDataWithBytes:data]};//因为NSDictionary不可改变，所以一定要这样初始化
+    [self sendDataToFlutter:result];
+}
+
+//设备rssi变化的回调
+-(void)rssiChangeCallback:(NSString *)deviceId newRssi:(NSNumber *) newRssi{
+    NSDictionary<NSString *,id> * result=@{@"eventName":@"rssiChange",@"id":deviceId,@"newRssi":newRssi};//因为NSDictionary不可改变，所以一定要这样初始化
     [self sendDataToFlutter:result];
 }
 

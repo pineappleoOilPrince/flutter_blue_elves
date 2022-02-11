@@ -17,16 +17,20 @@
 @property(strong,nonatomic,readwrite)CBCentralManager *centralManager;//本地蓝牙管理
 @property(assign,nonatomic,readwrite)BOOL isConnectedDevice;
 @property(assign,nonatomic,readwrite)BOOL isInitiativeDisConnect;
+@property(strong,nonatomic,readwrite)NSNumber * curRssi;//设备当前信号值
+@property(assign,nonatomic,readwrite)BOOL isWatchRssi;//是否正在轮询监听设备信号值变化
 @property(strong,nonatomic,readwrite)FlutterBlueElvesPlugin * pluginInstance;
 @property(strong,nonatomic,readwrite)NSMutableDictionary<NSString*,NSNumber*> * serviceFinishCharacteristicsCount;//储存服务已经完成的特征值数量
 @end
 
 @implementation Device
 
--(instancetype)init:(NSString *)identifier centralManager:(CBCentralManager *)centralManager peripheral:(CBPeripheral *)peripheral pluginInstance:(FlutterBlueElvesPlugin*)pluginInstance{
+-(instancetype)init:(NSString *)identifier centralManager:(CBCentralManager *)centralManager peripheral:(CBPeripheral *)peripheral pluginInstance:(FlutterBlueElvesPlugin*)pluginInstance rssi:(NSNumber *) rssi{
     self = [super init];
     self.identifier=identifier;
     self.state=0;
+    self.curRssi=rssi;
+    self.isWatchRssi=NO;
     self.peripheral=peripheral;
     [self.peripheral setDelegate:self];
     self.centralManager=centralManager;
@@ -99,6 +103,18 @@
     CBDescriptor * descriptor=[self getBlueDescriptor:serviceUuid characteristicUuid:characteristicUuid descriptorUuid:descriptorUuid];
     if(descriptor!=nil)
         [self.peripheral writeValue:data forDescriptor:descriptor];
+}
+
+-(BOOL)watchRssi:(BOOL) isStartWatch{
+    self.isWatchRssi=isStartWatch;
+    if(isStartWatch){
+        if(self.state==2&&self.peripheral!=nil){
+            [self.peripheral readRSSI];
+            return YES;
+        }
+        return NO;
+    }
+    return YES;
 }
 
 //通知该设备对象连接状态更新了
@@ -195,6 +211,16 @@
         [self.pluginInstance signalCallback:4 deviceId:self.identifier uuid:[descriptor.UUID UUIDString] isSuccess:NO data:nil];
     else
         [self.pluginInstance signalCallback:4 deviceId:self.identifier uuid:[descriptor.UUID UUIDString] isSuccess:YES data:[self handelDescriptorValue:descriptor.value]];
+}
+
+//读取设备rssi后的回调函数
+-(void)peripheral:(CBPeripheral *)peripheral didReadRSSI:(NSNumber *)RSSI error:(nullable NSError *)error {
+    if(self.isWatchRssi){
+        if(error==nil&&![RSSI isEqualToNumber:self.curRssi])
+            [self.pluginInstance rssiChangeCallback:self.identifier newRssi:RSSI];
+        if(self.state==2&&self.peripheral!=nil)
+            [self.peripheral readRSSI];
+    }
 }
 
 

@@ -1,3 +1,6 @@
+## 0.1.9
+Added the ability to listen device rssi change (#9).
+
 ## 0.1.8
 Fixed the bug that isNoResponse param is not working in Ios side (#4).
 

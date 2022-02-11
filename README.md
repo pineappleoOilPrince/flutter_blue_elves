@@ -21,7 +21,7 @@ This project is a flutter plugin,so you use it by add dependencies in your pubsp
 dependencies:
   flutter:
     sdk: flutter
-  flutter_blue_elves: ^0.1.8
+  flutter_blue_elves: ^0.1.9
 ```
 ```shell script
 $ flutter pub get
@@ -39,7 +39,7 @@ import 'package:flutter_blue_elves/flutter_blue_elves.dart';
 #### Check bluetooth function is Ok.
 ||Effect|Need version|
 |:-|:-|:-|
-|Bluetooth permission|1. Scan for Bluetooth devices;<br>2. Connect with Bluetooth devices;<br>3. Communicate with Bluetooth devices|Android 12+|
+|Bluetooth permission|1. Scan for Bluetooth devices;<br>2. Connect with Bluetooth devices;<br>3. Communicate with Bluetooth devices|Android 31+|
 |Location permission|1. Scan for Bluetooth devices;<br>2. Scan bluetooth device with physical location of the device;|ALL|
 |location function|Same as Location permission|ALL|
 |Bluetooth function|Use Bluetooth|ALL|
@@ -182,6 +182,30 @@ device.disConnect();
 ```dart
 ///if you never use this Device Object,call destroy(),witch can save space
 device.destroy();
+```
+
+#### Watch Device rssi change
+```dart
+///use this stream to listen rssi change
+device.deviceSignalResultStream.listen((newRssi) {
+  
+});
+///start watch rssi
+device.startWatchRssi().then((ok){
+  if(ok){
+    ///start ok
+  }else{
+    ///start error
+  } 
+})
+///stop watch rssi
+device.stopWatchRssi().then((ok){
+  if(ok){
+    ///stop ok
+  }else{
+    ///stop error
+  }
+})
 ```
 
 ## License

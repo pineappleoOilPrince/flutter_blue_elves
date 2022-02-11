@@ -14,7 +14,7 @@
 @property(nonatomic,assign,readonly)short state;
 @property(assign,nonatomic,readonly)BOOL isInitiativeDisConnect;
 
--(instancetype)init:(NSString *)identifier centralManager:(CBCentralManager *)centralManager peripheral:(CBPeripheral *)peripheral pluginInstance:(FlutterBlueElvesPlugin*)pluginInstance;
+-(instancetype)init:(NSString *)identifier centralManager:(CBCentralManager *)centralManager peripheral:(CBPeripheral *)peripheral pluginInstance:(FlutterBlueElvesPlugin*)pluginInstance rssi:(NSNumber *) rssi;
 -(void)connectDevice:(int)timeout;
 -(void)initiativeDisConnect;
 -(void)discoverService;
@@ -23,6 +23,7 @@
 -(void)writeDataToDevice:(NSString *) serviceUuid characteristicUuid:(NSString *) characteristicUuid isNoResponse:(BOOL) isNoResponse data:(NSData *) data;
 -(void)readDescriptorDataToDevice:(NSString *) serviceUuid characteristicUuid:(NSString *) characteristicUuid descriptorUuid:(NSString *) descriptorUuid;
 -(void)writeDescriptorDataToDevice:(NSString *) serviceUuid characteristicUuid:(NSString *) characteristicUuid descriptorUuid:(NSString *) descriptorUuid data:(NSData *) data;
+-(BOOL)watchRssi:(BOOL) isStartWatch;
 - (void)notifyConnectState:(short)newState;
 -(void)destroy;
 @end
