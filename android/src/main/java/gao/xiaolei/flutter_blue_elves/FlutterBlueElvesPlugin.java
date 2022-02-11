@@ -36,6 +36,7 @@ import gao.xiaolei.flutter_blue_elves.callback.ConnectStateCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DeviceSignalCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DiscoverServiceCallback;
 import gao.xiaolei.flutter_blue_elves.callback.MtuChangeCallback;
+import gao.xiaolei.flutter_blue_elves.callback.RssiChangeCallback;
 import gao.xiaolei.flutter_blue_elves.util.MyScanRecord;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.embedding.engine.plugins.activity.ActivityAware;
@@ -146,7 +147,7 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                 boolean isFromScan=(boolean)connectParamsMap.get("isFromScan") ;
                 BluetoothDevice cache = isFromScan ? scanDeviceCaches.remove(connectDeviceId):hideConnectedDeviceCaches.remove(connectDeviceId);//从扫描结果或者隐藏结果中去连接只能执行一次
                 if (cache != null) {//如果这个id存在的话
-                    Device toConnectDevice = new Device(context, mHandler,cache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback,mtuChangeCallback);
+                    Device toConnectDevice = new Device(context, mHandler,cache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback,mtuChangeCallback,rssiChangeCallback,(int) connectParamsMap.get("rssi"));
                     devicesMap.put(connectDeviceId,toConnectDevice);
                     int timeout=(int) connectParamsMap.get("timeout");
                     if(toConnectDevice.isInBleCache())//如果在蓝牙堆栈里就可以直接连接
@@ -233,6 +234,13 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                         result.success(requestMtuDevice.requestMtu((Integer) requestMtuDataParamsMap.get("newMtu")));
                     else result.success(false);
                 }else result.success(false);
+                break;
+            case "watchRssi"://如果是开始/停止监听rssi的变化
+                Map<String, Object> watchRssiDataParamsMap = call.arguments();
+                Device watchRssiDevice = devicesMap.get((String)watchRssiDataParamsMap.get("id"));
+                if(watchRssiDevice!=null)
+                    result.success(watchRssiDevice.watchRssi((boolean)watchRssiDataParamsMap.get("isStart")));
+                else result.success(false);
                 break;
             case "checkBlueLackWhat"://如果是检查缺少什么权限和功能
                 result.success(checkBlueLackWhat());
@@ -322,6 +330,14 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
         result.put("id", id);
         result.put("isSuccess", isSuccess);
         result.put("newMtu", newMtu);
+        sendSuccessMsgToEventChannel(result);
+    };
+
+    private final RssiChangeCallback rssiChangeCallback= (id, newRssi) -> {
+        Map<String, Object> result = new HashMap<>(3);
+        result.put("eventName", "rssiChange");
+        result.put("id", id);
+        result.put("newRssi", newRssi);
         sendSuccessMsgToEventChannel(result);
     };
 

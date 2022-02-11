@@ -52,10 +52,12 @@ class _DeviceControlState extends State<DeviceControl> {
     });
     _deviceState = widget._device.state;
     if (_deviceState == DeviceState.connected) {
+      if (!widget._device.isWatchingRssi) widget._device.startWatchRssi();
       widget._device.discoveryService();
     }
     _stateStream = widget._device.stateStream.listen((event) {
       if (event == DeviceState.connected) {
+        if (!widget._device.isWatchingRssi) widget._device.startWatchRssi();
         setState(() {
           _mtu = widget._device.mtu;
           _serviceInfos.clear();
@@ -136,6 +138,20 @@ class _DeviceControlState extends State<DeviceControl> {
             children: [
               Row(
                 children: [
+                  StreamBuilder<int>(
+                      initialData: widget._device.rssi,
+                      stream: widget._device.rssiStream,
+                      builder:
+                          (BuildContext context, AsyncSnapshot<int> snapshot) {
+                        return Text(
+                            "Rssi:" +
+                                (snapshot.connectionState ==
+                                        ConnectionState.active
+                                    ? snapshot.data.toString()
+                                    : widget._device.rssi.toString()) +
+                                "dBm",
+                            style: const TextStyle(color: Colors.white));
+                      }),
                   TextButton(
                     child: Text("Mtu:$_mtu",
                         style: const TextStyle(color: Colors.white)),

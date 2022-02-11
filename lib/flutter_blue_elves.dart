@@ -190,6 +190,7 @@ class FlutterBlueElves {
       case "initiativeDisConnected": //如果是手动断开连接
         Device? deviceCache = _deviceCache[message['id']];
         if (deviceCache != null) {
+          deviceCache._isWatchingRssi=false;
           deviceCache._stateStreamController
               .add(DeviceState.initiativeDisConnected); //广播设备状态变化
           deviceCache._state =
@@ -199,6 +200,7 @@ class FlutterBlueElves {
       case "disConnected": //如果是被动断开连接
         Device? deviceCache = _deviceCache[message['id']];
         if (deviceCache != null) {
+          deviceCache._isWatchingRssi=false;
           deviceCache._stateStreamController
               .add(DeviceState.disconnected); //广播设备状态变化
           deviceCache._state = DeviceState.disconnected; //将设备状态设置为被动断开连接
@@ -295,6 +297,13 @@ class FlutterBlueElves {
               message['isSuccess'], message['newMtu']);
         }
         break;
+      case "rssiChange": //如果是设备的rssi变化了
+        Device? deviceCache = _deviceCache[message['id']];
+        if (deviceCache != null) {
+          deviceCache._rssi = message['newRssi'];
+          deviceCache._rssiStreamController.add(message['newRssi']);
+        }
+        break;
     }
   }
 
@@ -309,17 +318,22 @@ class Device {
   late final String _id; //设备Id
   late DeviceState _state;
   late int _mtu;
+  late int _rssi;
+  late bool _isWatchingRssi;
   late StreamController<DeviceState> _stateStreamController;
   late Stream<DeviceState> _stateStream;
   late StreamController<BleService> _serviceDiscoveryStreamController;
   late Stream<BleService> _serviceDiscoveryStream;
   late StreamController<DeviceSignalResult> _deviceSignalResultStreamController;
   late Stream<DeviceSignalResult> _deviceSignalResultStream;
+  late StreamController<int> _rssiStreamController;
+  late Stream<int> _rssiStream;
   late Function(bool isSuccess, int newMtu) _androidRequestMtuCallback;
 
-  Device._(this._id) {
+  Device._(this._id, this._rssi) {
     _state = DeviceState.disconnected;
     _mtu = 23;
+    _isWatchingRssi=false;
     _stateStreamController = StreamController<DeviceState>();
     _stateStream = _stateStreamController.stream.asBroadcastStream();
     _serviceDiscoveryStreamController = StreamController<BleService>();
@@ -329,12 +343,17 @@ class Device {
         StreamController<DeviceSignalResult>();
     _deviceSignalResultStream =
         _deviceSignalResultStreamController.stream.asBroadcastStream();
+    _rssiStreamController =
+        StreamController<int>();
+    _rssiStream =
+        _rssiStreamController.stream.asBroadcastStream();
   }
 
   ///销毁设备对象,不然可能会存在重复的设备对象,当
   void destroy() {
     if (_state != DeviceState.destroyed) {
       _state = DeviceState.destroyed; //将设备状态置为已销毁
+      _isWatchingRssi=false;
       _stateStreamController.add(DeviceState.destroyed); //广播状态变化
       FlutterBlueElves.instance._deviceCache.remove(_id); //从cache中移除
       FlutterBlueElves.instance._channel
@@ -342,6 +361,7 @@ class Device {
       _stateStreamController.close(); //关闭流
       _serviceDiscoveryStreamController.close(); //关闭流
       _deviceSignalResultStreamController.close(); //关闭流
+      _rssiStreamController.close();//关闭流
     }
   }
 
@@ -487,6 +507,34 @@ class Device {
 
   ///获取当前设备的mtu,默认是23
   int get mtu => _mtu;
+
+  ///获取当前设备的rssi
+  int get rssi => _rssi;
+
+  /// 获取当前是否正在监听rssi的变化
+  bool get isWatchingRssi => _isWatchingRssi;
+
+  ///获取设备rssi监听流
+  Stream<int> get rssiStream => _rssiStream;
+
+  ///开始监听设备rssi
+  Future<bool> startWatchRssi() {
+    return FlutterBlueElves.instance._channel
+        .invokeMethod('watchRssi', {"id": _id, "isStart": true}).then((ok) {
+          if(ok) _isWatchingRssi=true;
+      return ok;
+    });
+  }
+
+  ///停止监听设备rssi
+  Future<bool> stopWatchRssi() {
+    return FlutterBlueElves.instance._channel
+        .invokeMethod('watchRssi', {"id": _id, "isStart": false}).then((ok) {
+          if(ok) _isWatchingRssi=false;
+      return ok;
+    });
+  }
+
 }
 
 ///返回的隐藏的已连接对象
@@ -519,13 +567,14 @@ class HideConnectedDevice {
     Device? device = FlutterBlueElves.instance._deviceCache[_id];
     if (device == null) {
       ///cache里面没有代表之前没有连接过,所以可以用扫描对象连接,除非将device.destroy()
-      device = Device._(_id); //创建设备对象
+      device = Device._(_id, 0); //创建设备对象
       FlutterBlueElves.instance._deviceCache[_id] = device; //将device加入到cache中
       device._state = DeviceState.connecting; //将对象状态置为连接中
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
         "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
-        "isFromScan": false
+        "isFromScan": false,
+        "rssi": 0
       }); //去连接
     } else {
       ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可
@@ -586,13 +635,14 @@ class ScanResult {
     Device? device = FlutterBlueElves.instance._deviceCache[_id];
     if (device == null) {
       ///cache里面没有代表之前没有连接过,所以可以用扫描对象连接,除非将device.destroy()
-      device = Device._(_id); //创建设备对象
+      device = Device._(_id, _rssi); //创建设备对象
       FlutterBlueElves.instance._deviceCache[_id] = device; //将device加入到cache中
       device._state = DeviceState.connecting; //将对象状态置为连接中
       FlutterBlueElves.instance._channel.invokeMethod('connect', {
         "id": _id,
         "timeout": Platform.isAndroid ? connectTimeout : connectTimeout ~/ 1000,
-        "isFromScan": true
+        "isFromScan": true,
+        "rssi": _rssi
       }); //去连接
     } else {
       ///如果是同一个设备就不需要再新建device对象,直接用已有device对象连接即可

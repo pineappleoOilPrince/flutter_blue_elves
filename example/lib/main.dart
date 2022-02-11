@@ -324,23 +324,42 @@ class _MyAppState extends State<MyApp> {
                                   "Unable to get mac address",
                               style: const TextStyle(
                                   color: Colors.black, fontSize: 12)),
+                          StreamBuilder<int>(
+                              initialData: currentConnected._device.rssi,
+                              stream: currentConnected._device.rssiStream,
+                              builder: (BuildContext context,
+                                  AsyncSnapshot<int> snapshot) {
+                                return Text(
+                                    (snapshot.connectionState ==
+                                                ConnectionState.active
+                                            ? snapshot.data.toString()
+                                            : currentConnected._device.rssi
+                                                .toString()) +
+                                        "dBm",
+                                    style: const TextStyle(
+                                        color: Colors.lightGreen,
+                                        fontSize: 12));
+                              })
                         ],
                       ),
                     ),
                     Expanded(
                       flex: 4,
-                      child: StreamBuilder<DeviceState>(
-                          initialData: DeviceState.connected,
-                          stream: currentConnected._device.stateStream,
-                          builder: (BuildContext context,
-                              AsyncSnapshot<DeviceState> snapshot) {
-                            DeviceState? currentState =
-                                snapshot.connectionState ==
-                                        ConnectionState.active
-                                    ? snapshot.data
-                                    : currentConnected._device.state;
-                            return Column(children: [
-                              ElevatedButton(
+                      child: Column(children: [
+                        StreamBuilder<DeviceState>(
+                            initialData: DeviceState.connected,
+                            stream: currentConnected._device.stateStream,
+                            builder: (BuildContext context,
+                                AsyncSnapshot<DeviceState> snapshot) {
+                              DeviceState? currentState =
+                                  snapshot.connectionState ==
+                                          ConnectionState.active
+                                      ? snapshot.data
+                                      : currentConnected._device.state;
+                              if (currentState == DeviceState.connected &&
+                                  !currentConnected._device.isWatchingRssi)
+                                currentConnected._device.startWatchRssi();
+                              return ElevatedButton(
                                 child: Text(
                                     currentState == DeviceState.connected
                                         ? "Disconnect"
@@ -353,34 +372,34 @@ class _MyAppState extends State<MyApp> {
                                         .connect(connectTimeout: 10000);
                                   }
                                 },
-                              ),
-                              ElevatedButton(
-                                child: const Text("destroy"),
-                                onPressed: () {
-                                  currentConnected._device.destroy();
-                                  setState(() {
-                                    _connectedList.removeAt(index - 1);
-                                  });
+                              );
+                            }),
+                        ElevatedButton(
+                          child: const Text("destroy"),
+                          onPressed: () {
+                            currentConnected._device.destroy();
+                            setState(() {
+                              _connectedList.removeAt(index - 1);
+                            });
+                          },
+                        ),
+                        ElevatedButton(
+                          child: const Text("To tap"),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return DeviceControl(
+                                      currentConnected._name,
+                                      currentConnected._macAddress,
+                                      currentConnected._device);
                                 },
                               ),
-                              ElevatedButton(
-                                child: const Text("To tap"),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return DeviceControl(
-                                            currentConnected._name,
-                                            currentConnected._macAddress,
-                                            currentConnected._device);
-                                      },
-                                    ),
-                                  );
-                                },
-                              )
-                            ]);
-                          }),
+                            );
+                          },
+                        )
+                      ]),
                     ),
                   ],
                 ),

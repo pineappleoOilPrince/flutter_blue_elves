@@ -14,7 +14,6 @@ import androidx.annotation.RequiresApi;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -22,10 +21,13 @@ import gao.xiaolei.flutter_blue_elves.callback.ConnectStateCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DeviceSignalCallback;
 import gao.xiaolei.flutter_blue_elves.callback.DiscoverServiceCallback;
 import gao.xiaolei.flutter_blue_elves.callback.MtuChangeCallback;
+import gao.xiaolei.flutter_blue_elves.callback.RssiChangeCallback;
 
 //封装的蓝牙设备对象
 public class Device {
-    private short state=0;//当前设备的状态,0代表未连接,1代表正在连接,2代表已连接
+    private short connectState=0;//当前设备的状态,0代表未连接,1代表正在连接,2代表已连接
+    private int curRssi=0;//储存当前设备的rssi值
+    private boolean isWatchRssi=false;//是否要监听rssi
     private BluetoothGatt mBleGatt;//蓝牙连接对象
     private Context mContext;//当前应用的上下文
     private final String BLUETOOTH_NOTIFY_D="00002902-0000-1000-8000-00805f9b34fb";//此属性是用来开启通知的时获取notify特征值的描述对象,默认是这个描述uuid
@@ -39,16 +41,17 @@ public class Device {
     private DeviceSignalCallback deviceSignalCallback;//设备传回数据时的回调
     private DiscoverServiceCallback discoverServiceCallback;//发现蓝牙服务之后的回调
     private MtuChangeCallback mtuChangeCallback;//mtu被修改之后的回调
+    private RssiChangeCallback rssiChangeCallback;//rssi修改之后的回调
     private Runnable connectTimeoutCallback=()->{//连接超时的回调
         if(mBleGatt!=null){
             mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
             mBleGatt=null;
-            state=0;
+            connectState=0;
         }
         connectStateCallback.connectTimeout(bleDevice.getAddress());//连接超时的回调
     };
 
-    public Device(Context mContext,Handler handler,BluetoothDevice bleDevice, ConnectStateCallback connectStateCallback, DeviceSignalCallback deviceSignalCallback, DiscoverServiceCallback discoverServiceCallback,MtuChangeCallback mtuChangeCallback) {
+    public Device(Context mContext,Handler handler,BluetoothDevice bleDevice, ConnectStateCallback connectStateCallback, DeviceSignalCallback deviceSignalCallback, DiscoverServiceCallback discoverServiceCallback,MtuChangeCallback mtuChangeCallback,RssiChangeCallback rssiChangeCallback,int rssi) {
         this.mContext=mContext;
         this.mHandler=handler;
         this.bleDevice=bleDevice;
@@ -56,6 +59,8 @@ public class Device {
         this.discoverServiceCallback = discoverServiceCallback;
         this.deviceSignalCallback=deviceSignalCallback;
         this.mtuChangeCallback=mtuChangeCallback;
+        this.rssiChangeCallback=rssiChangeCallback;
+        this.curRssi=rssi;
     }
 
     /**
@@ -63,14 +68,14 @@ public class Device {
      */
     public void destroy(){
         mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
-        if(state==2){//如果是已经连接才能去断开连接
+        if(connectState==2){//如果是已经连接才能去断开连接
             isInitiativeDisConnect=true;//标记当前是手动断开的
             mBleGatt.disconnect();//断开连接
         }else{//如果未连接就直接将连接资源关闭
             if(mBleGatt!=null){
                 mBleGatt.close();//直接将连接资源关闭，这样连接回调也不会被调用
                 mBleGatt=null;
-                state=0;
+                connectState=0;
             }
         }
     }
@@ -93,9 +98,9 @@ public class Device {
      * 连接设备
      */
     public void connectDevice(int connectTimeOut){
-        if(state==0){//如果当前是未连接的状态
+        if(connectState==0){//如果当前是未连接的状态
             connectRetryTimes=0;
-            state=1;
+            connectState=1;
             isConnectedDevice=false;//设置当前还未连接上过设备
             isInitiativeDisConnect=false;//设置如果断开连接不是手动断开的连接
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -111,7 +116,7 @@ public class Device {
      * 主动与设备断开连接
      */
     public void initiativeDisConnect(){
-        if(state==2){//如果是已经连接才能去断开连接
+        if(connectState==2){//如果是已经连接才能去断开连接
             isInitiativeDisConnect=true;//标记当前是手动断开的
             mBleGatt.disconnect();//断开连接
         }
@@ -193,6 +198,21 @@ public class Device {
     }
 
     /**
+     * 开启对该设备rssi变化的轮询监听
+     */
+    public boolean watchRssi(boolean isStart){
+        isWatchRssi=isStart;
+        if (isStart){
+            if(connectState==2&&mBleGatt!=null) {
+                mBleGatt.readRemoteRssi();
+                return true;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * 根据服务UUID和特征UUID和描述UUID,获取一个描述{@link BluetoothGattDescriptor}
      */
     private BluetoothGattDescriptor getBluetoothGattDescriptor(String serviceUUID, String characteristicUUID,String descriptorUUID) {
@@ -229,7 +249,7 @@ public class Device {
             if (newState == BluetoothProfile.STATE_CONNECTED) { //连接成功
                 isConnectedDevice=true;//标志曾经连接上设备
                 mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
-                state=2;//将状态修改为已连接
+                connectState=2;//将状态修改为已连接
                 connectStateCallback.connectSuccess(bleDevice.getAddress());//连接成功后的调用
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) { //断开连接
                 if(mBleGatt!=null){
@@ -243,7 +263,7 @@ public class Device {
                         mBleGatt = bleDevice.connectGatt(mContext, false, mGattCallback);
                 }else{
                     mHandler.removeCallbacks(connectTimeoutCallback);//停止连接超时的定时
-                    state=0;
+                    connectState=0;
                     if(isConnectedDevice)//曾经连接上才叫断开,不然就是连接失败
                         connectStateCallback.disConnected(bleDevice.getAddress(),isInitiativeDisConnect);//断开连接后的调用
                 }
@@ -347,29 +367,41 @@ public class Device {
             else //如果失败了
                 mtuChangeCallback.mtuChangeCallback(bleDevice.getAddress(),false,mtu);
         }
+
+        //读取设备当前信号值的回调
+        @Override
+        public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            super.onReadRemoteRssi(gatt, rssi, status);
+            if(isWatchRssi){//如果当前要监听才会上报和继续获取rssi
+                if(status==BluetoothGatt.GATT_SUCCESS&&rssi!=curRssi)//如果获取成功并且与当前值不同
+                    rssiChangeCallback.rssiChangeCallback(bleDevice.getAddress(),rssi);
+                if(connectState==2&&mBleGatt!=null)
+                    mBleGatt.readRemoteRssi();
+            }
+        }
     }
 
-    private List<Short> getCharacteristicProperties(BluetoothGattCharacteristic characteristic){
-        List<Short> result=new LinkedList<>();
-        int properties=characteristic.getProperties();
-        if((properties&BluetoothGattCharacteristic.PROPERTY_BROADCAST)>0)
-            result.add((short) 1);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_READ)>0)
-            result.add((short) 2);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)>0)
-            result.add((short) 3);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_WRITE)>0)
-            result.add((short) 4);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_NOTIFY)>0)
-            result.add((short) 5);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_INDICATE)>0)
-            result.add((short) 6);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_SIGNED_WRITE)>0)
-            result.add((short) 7);
-        if((properties&BluetoothGattCharacteristic.PROPERTY_EXTENDED_PROPS)>0)
-            result.add((short) 8);
-        return result;
-    }
+//    private List<Short> getCharacteristicProperties(BluetoothGattCharacteristic characteristic){
+//        List<Short> result=new LinkedList<>();
+//        int properties=characteristic.getProperties();
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_BROADCAST)>0)
+//            result.add((short) 1);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_READ)>0)
+//            result.add((short) 2);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)>0)
+//            result.add((short) 3);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_WRITE)>0)
+//            result.add((short) 4);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_NOTIFY)>0)
+//            result.add((short) 5);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_INDICATE)>0)
+//            result.add((short) 6);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_SIGNED_WRITE)>0)
+//            result.add((short) 7);
+//        if((properties&BluetoothGattCharacteristic.PROPERTY_EXTENDED_PROPS)>0)
+//            result.add((short) 8);
+//        return result;
+//    }
 
 
 }
