@@ -150,10 +150,13 @@ public class FlutterBlueElvesPlugin implements FlutterPlugin, MethodCallHandler,
                     Device toConnectDevice = new Device(context, mHandler,cache, mConnectStateCallback, mDeviceSignalCallback, myDiscoverServiceCallback,mtuChangeCallback,rssiChangeCallback,(int) connectParamsMap.get("rssi"));
                     devicesMap.put(connectDeviceId,toConnectDevice);
                     int timeout=(int) connectParamsMap.get("timeout");
-                    if(toConnectDevice.isInBleCache())//如果在蓝牙堆栈里就可以直接连接
-                        toConnectDevice.connectDevice(timeout);
-                    else//如果不在蓝牙堆栈里就要先扫描再连接
-                        scanDevices(false,timeout ,true,connectDeviceId);
+                    // if(toConnectDevice.isInBleCache())//如果在蓝牙堆栈里就可以直接连接
+                    
+                    // Fixed issue when connection failed. 2023 06 30
+                    toConnectDevice.connectDevice(timeout);
+                    
+                    // else//如果不在蓝牙堆栈里就要先扫描再连接
+                    //     scanDevices(false,timeout ,true,connectDeviceId);
                     result.success(true);
                 } else result.success(false);
                 break;
